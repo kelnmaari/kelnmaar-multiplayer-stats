@@ -87,6 +87,93 @@ local function init_player(player_index)
     end
 end
 
+-- Cleanup player data when they leave (MEMORY LEAK FIX)
+local function cleanup_player_data(player_index)
+    -- Clean up storage data
+    if storage.players[player_index] then
+        storage.players[player_index] = nil
+    end
+    
+    -- Clean up GUI state
+    if storage.gui_state[player_index] then
+        storage.gui_state[player_index] = nil
+    end
+    
+    -- Clean up any open GUI windows for this player
+    local player = game.players[player_index]
+    if player and player.valid then
+        -- Close main GUI
+        if player.gui.top.multiplayer_stats_frame then
+            player.gui.top.multiplayer_stats_frame.destroy()
+        end
+        
+        -- Close all secondary GUI windows
+        if player.gui.screen.achievements_frame then
+            player.gui.screen.achievements_frame.destroy()
+        end
+        if player.gui.screen.rankings_frame then
+            player.gui.screen.rankings_frame.destroy()
+        end
+        if player.gui.screen.comparison_frame then
+            player.gui.screen.comparison_frame.destroy()
+        end
+        if player.gui.screen.crafting_details_frame then
+            player.gui.screen.crafting_details_frame.destroy()
+        end
+        if player.gui.screen.crafting_history_frame then
+            player.gui.screen.crafting_history_frame.destroy()
+        end
+    end
+end
+
+-- Limit crafted_items size to prevent memory bloat (MEMORY LEAK FIX)
+local function limit_crafted_items(player_index)
+    local stats = storage.players[player_index]
+    if not stats or not stats.crafted_items then return end
+    
+    local item_count = 0
+    for _ in pairs(stats.crafted_items) do
+        item_count = item_count + 1
+    end
+    
+    -- If we have more than 500 different items, keep only top 300 by count
+    if item_count > 500 then
+        local sorted_items = {}
+        for item_name, count in pairs(stats.crafted_items) do
+            table.insert(sorted_items, {name = item_name, count = count})
+        end
+        table.sort(sorted_items, function(a, b) return a.count > b.count end)
+        
+        -- Clear and rebuild with only top 300
+        stats.crafted_items = {}
+        for i = 1, math.min(300, #sorted_items) do
+            stats.crafted_items[sorted_items[i].name] = sorted_items[i].count
+        end
+    end
+end
+
+-- Cleanup invalid player references (MEMORY LEAK FIX)
+local function cleanup_invalid_players()
+    local valid_players = {}
+    for _, player in pairs(game.players) do
+        valid_players[player.index] = true
+    end
+    
+    -- Clean up storage.players
+    for player_index in pairs(storage.players or {}) do
+        if not valid_players[player_index] then
+            storage.players[player_index] = nil
+        end
+    end
+    
+    -- Clean up storage.gui_state
+    for player_index in pairs(storage.gui_state or {}) do
+        if not valid_players[player_index] then
+            storage.gui_state[player_index] = nil
+        end
+    end
+end
+
 -- Calculate distance between two positions
 local function calculate_distance(pos1, pos2)
     local dx = pos1.x - pos2.x
@@ -1068,7 +1155,8 @@ local function update_stats_gui()
     for player_index, gui_state in pairs(storage.gui_state or {}) do
         if gui_state.gui_open then
             local player = game.players[player_index]
-            if player and player.gui.top.multiplayer_stats_frame then
+            -- MEMORY LEAK FIX: Check if player exists, is valid and connected
+            if player and player.valid and player.connected and player.gui.top.multiplayer_stats_frame then
                 local frame = player.gui.top.multiplayer_stats_frame
                 local content = frame.stats_content
                 if content and not gui_state.gui_collapsed then
@@ -1659,6 +1747,17 @@ script.on_event(defines.events.on_player_joined_game, function(event)
     end
 end)
 
+-- MEMORY LEAK FIX: Clean up data when players leave
+script.on_event(defines.events.on_player_left_game, function(event)
+    -- Note: Don't cleanup immediately as player might reconnect
+    -- Data will be cleaned up by periodic cleanup or on_player_removed
+end)
+
+-- MEMORY LEAK FIX: Clean up data when players are permanently removed
+script.on_event(defines.events.on_player_removed, function(event)
+    cleanup_player_data(event.player_index)
+end)
+
 -- Track player movement every 60 ticks (1 second)
 script.on_nth_tick(60, function(event)
     -- Check if mod is enabled
@@ -1681,6 +1780,17 @@ script.on_nth_tick(60, function(event)
     end
 end)
 
+-- MEMORY LEAK FIX: Periodic cleanup every 10 minutes (36000 ticks)
+script.on_nth_tick(36000, function(event)
+    -- Check if mod is enabled
+    if not (settings.startup["multiplayer-stats-enable-mod"] and 
+            settings.startup["multiplayer-stats-enable-mod"].value) then
+        return
+    end
+    
+    cleanup_invalid_players()
+end)
+
 
 
 -- Track crafted items
@@ -1694,6 +1804,11 @@ script.on_event(defines.events.on_player_crafted_item, function(event)
     
     stats.crafted_items[item_name] = (stats.crafted_items[item_name] or 0) + count
     stats.total_crafted = stats.total_crafted + count
+    
+    -- MEMORY LEAK FIX: Limit crafted_items size periodically
+    if stats.total_crafted % 1000 == 0 then
+        limit_crafted_items(player_index)
+    end
     
     check_achievements(player_index)
 end)
