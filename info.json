@@ -1,9 +1,9 @@
 {
   "name": "kelnmaar-multiplayer-stats",
-  "version": "4.2.0",
+  "version": "5.4.5",
   "title": "KelnMaar's Multiplayer Statistics",
   "author": "KelnMaar",
-  "description": "Advanced statistics tracking for multiplayer games including distance traveled, crafted items count, active crafts monitoring, combat stats, building stats, mining stats, playtime tracking, Space Age features, comprehensive 22-tier rank system with advanced scoring algorithms, achievement system with notifications, player rankings and comparison tools, and data visualization",
+  "description": "Comprehensive multiplayer statistics with 22-tier ranking system and 36 challenging achievements! Features visual planet icons (🪐🌋🌩️❄️🌿), player comparisons, crafting history, real-time leaderboards, and complete Space Age integration. Perfect for competitive multiplayer servers with extreme survival challenges up to 1000 hours.",
   "factorio_version": "2.0",
   "dependencies": [
     "base >= 2.0.0",

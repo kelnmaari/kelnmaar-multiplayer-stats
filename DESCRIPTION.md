@@ -1,5 +1,3 @@
-# KelnMaar's Multiplayer Statistics
-
 KelnMaar's Multiplayer Statistics is a comprehensive statistics tracking mod designed specifically for multiplayer Factorio sessions. This mod provides detailed monitoring of player activities and performance metrics to enhance competitive gameplay and team coordination with full Space Age support.
 
 ## Key Features:
@@ -42,4 +40,4 @@ KelnMaar's Multiplayer Statistics is a comprehensive statistics tracking mod des
 
 • **Multi-Language Support**: Complete localization support with Russian and English translations for all UI elements, achievements, and system messages.
 
-Perfect for multiplayer servers, competitive gameplay, Space Age exploration, and communities that want to track and celebrate player achievements and progress across the entire Factorio universe.
+Perfect for multiplayer servers, competitive gameplay, Space Age exploration, and communities that want to track and celebrate player achievements and progress across the entire Factorio universe. 
