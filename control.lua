@@ -70,6 +70,11 @@ script.on_init(function()
     register_periodic_handlers()
 end)
 
+script.on_load(function()
+    -- Register periodic handlers on load to avoid desync
+    register_periodic_handlers()
+end)
+
 script.on_configuration_changed(function()
     storage.players = storage.players or {}
     storage.gui_state = storage.gui_state or {}

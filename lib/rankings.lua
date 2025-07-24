@@ -124,8 +124,11 @@ function rankings.calculate_player_rank(stats)
     -- Planet exploration bonus
     if stats.planets_visited then
         local planet_count = 0
-        for _ in pairs(stats.planets_visited) do
-            planet_count = planet_count + 1
+        for planet_name, _ in pairs(stats.planets_visited) do
+            -- Исключаем платформы (имя начинается с 'platform')
+            if not string.match(planet_name, "^platform") then
+                planet_count = planet_count + 1
+            end
         end
         score = score + (planet_count * 1000)
     end
@@ -182,8 +185,11 @@ function rankings.check_achievements(player_index, utils)
             elseif achievement.type == "planets" then
                 local planet_count = 0
                 if stats.planets_visited then
-                    for _ in pairs(stats.planets_visited) do
-                        planet_count = planet_count + 1
+                    for planet_name, _ in pairs(stats.planets_visited) do
+                        -- Исключаем платформы (имя начинается с 'platform')
+                        if not string.match(planet_name, "^platform") then
+                            planet_count = planet_count + 1
+                        end
                     end
                 end
                 if planet_count >= achievement.threshold then

@@ -723,8 +723,11 @@ function gui.show_achievements(requesting_player, rankings, utils)
             elseif achievement.type == "planets" then
                 current_value = 0
                 if stats.planets_visited then
-                    for _ in pairs(stats.planets_visited) do
-                        current_value = current_value + 1
+                    for planet_name, _ in pairs(stats.planets_visited) do
+                        -- Исключаем платформы (имя начинается с 'platform')
+                        if not string.match(planet_name, "^platform") then
+                            current_value = current_value + 1
+                        end
                     end
                 end
             end

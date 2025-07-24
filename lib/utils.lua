@@ -129,7 +129,10 @@ function utils.create_planets_flow(parent, planets_visited)
     -- Sort planets by visit order (earliest first)
     local sorted_planets = {}
     for planet_name, visit_tick in pairs(planets_visited) do
-        table.insert(sorted_planets, {name = planet_name, tick = visit_tick})
+        -- Исключаем платформы (имя начинается с 'platform')
+        if not string.match(planet_name, "^platform") then
+            table.insert(sorted_planets, {name = planet_name, tick = visit_tick})
+        end
     end
     table.sort(sorted_planets, function(a, b) return a.tick < b.tick end)
     
