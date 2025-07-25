@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 5.8.0
-Date: 08. 01. 2025
+Date: 25. 07. 2025
   Changes:
     - Planet Statistics system temporarily disabled as Work-In-Progress (WIP)
     - Added new startup setting "Enable Planet Statistics" (disabled by default)
@@ -15,7 +15,7 @@ Date: 08. 01. 2025
 
 ---------------------------------------------------------------------------------------------------
 Version: 5.6.0  
-Date: 02. 01. 2025
+Date: 25. 07. 2025
   Major Features:
     - Added comprehensive Planet Statistics system for real-time monitoring of planetary production
     - New Planet Statistics GUI displays current production, power generation/consumption, and resource shortages
