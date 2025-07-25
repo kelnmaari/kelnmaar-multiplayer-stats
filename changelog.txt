@@ -1,0 +1,13 @@
+---------------------------------------------------------------------------------------------------
+Version: 5.5.0
+Date: 25. 07. 2025
+  Translation:
+    - Added complete Chinese (Simplified) localization with all 268 strings translated
+    - Added complete Japanese localization with all 268 strings translated
+    - Added complete Korean localization with all 268 strings translated
+    - Added complete Spanish (Spain) localization with all 268 strings translated
+    - Added complete Portuguese (Brazil) localization with all 268 strings translated
+    - Added complete Vietnamese localization with all 268 strings translated
+    - Mod now supports 8 languages total: English, Russian, Chinese, Japanese, Korean, Spanish, Portuguese, Vietnamese
+    - All achievement names, rank system, GUI elements, and mod settings are fully localized
+    - Complete support for Space Age features across all languages 
