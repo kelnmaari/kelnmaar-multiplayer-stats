@@ -1,2 +1,7 @@
 .cursor/
-.git
+.git/
+build_mod_archive.bat
+.vscode/
+.cursor/
+.gitignore
+.gitignore
