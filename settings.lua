@@ -19,6 +19,13 @@ data:extend({
         default_value = 300,
         order = "a-b"
     },
+    {
+        type = "bool-setting",
+        name = "multiplayer-stats-enable-planet-stats",
+        setting_type = "startup",
+        default_value = false,
+        order = "a-c"
+    },
 
     -- Runtime global settings (can be changed during game, admin only)
     {

@@ -1,12 +1,21 @@
 -- Multiplayer Statistics Mod
 -- Modular version with lib/ structure
 
+-- Planet Stats Feature Toggle (controlled by startup setting)
+-- To enable planet stats:
+-- 1. Set the setting "multiplayer-stats-enable-planet-stats" to true in settings.lua
+-- 2. Uncomment the hotkey registration in data.lua (search for "toggle-planet-stats")
+-- 3. Restart the game
+local PLANET_STATS_ENABLED = settings.startup["multiplayer-stats-enable-planet-stats"] and 
+                             settings.startup["multiplayer-stats-enable-planet-stats"].value or false
+
 -- Import modules
 local utils = require("lib.utils")
 local rankings = require("lib.rankings")
 local stats_module = require("lib.stats")
 local gui = require("lib.gui")
 local gui_main = require("lib.gui_main")
+local planet_stats = PLANET_STATS_ENABLED and require("lib.planet_stats") or nil
 
 -- Store update frequency globally to avoid runtime settings access
 local update_frequency = 300
@@ -25,6 +34,11 @@ local function register_periodic_handlers()
                 stats_module.update_player_status(player)
                 stats_module.update_chart_history(player.index, rankings)
                 rankings.check_achievements(player.index, utils)
+                
+                -- Update planet stats GUI if open
+                if PLANET_STATS_ENABLED and planet_stats then
+                    planet_stats.update_planet_stats_gui(player)
+                end
             end
         end
     end)
@@ -61,6 +75,9 @@ end
 script.on_init(function()
     storage.players = {}
     storage.gui_state = {}
+    if PLANET_STATS_ENABLED then
+        storage.planet_stats_state = {}
+    end
     
     -- Get update frequency from startup settings once
     update_frequency = settings.startup["multiplayer-stats-update-frequency"] and 
@@ -172,6 +189,55 @@ script.on_event("toggle-multiplayer-stats", function(event)
     end
 end)
 
+-- Planet statistics events
+if PLANET_STATS_ENABLED then
+    script.on_event(defines.events.on_player_changed_surface, function(event)
+        local player = game.players[event.player_index]
+        
+        -- Auto-show planet stats when changing to a new surface
+        if storage.planet_stats_state and storage.planet_stats_state[event.player_index] and 
+           storage.planet_stats_state[event.player_index].auto_show then
+            
+            local surface_stats = planet_stats.collect_surface_stats(player.surface)
+            if surface_stats then
+                planet_stats.create_planet_stats_gui(player, surface_stats)
+            end
+        end
+    end)
+end
+
+-- Toggle planet statistics GUI (new custom input)
+if PLANET_STATS_ENABLED then
+    script.on_event("toggle-planet-stats", function(event)
+        local player = game.players[event.player_index]
+        
+        -- Initialize planet stats state if needed
+        if not storage.planet_stats_state then
+            storage.planet_stats_state = {}
+        end
+        
+        if not storage.planet_stats_state[event.player_index] then
+            storage.planet_stats_state[event.player_index] = {
+                auto_show = false
+            }
+        end
+        
+        -- Check if planet stats GUI is open
+        local planet_gui_exists = player.gui.screen.planet_stats_frame ~= nil
+        
+        if planet_gui_exists then
+            player.gui.screen.planet_stats_frame.destroy()
+            storage.planet_stats_state[event.player_index].auto_show = false
+        else
+            local surface_stats = planet_stats.collect_surface_stats(player.surface)
+            if surface_stats then
+                planet_stats.create_planet_stats_gui(player, surface_stats)
+                storage.planet_stats_state[event.player_index].auto_show = true
+            end
+        end
+    end)
+end
+
 -- GUI click handlers
 script.on_event(defines.events.on_gui_click, function(event)
     local player = game.players[event.player_index]
@@ -250,6 +316,48 @@ script.on_event(defines.events.on_gui_click, function(event)
         if storage.dashboard_data and storage.dashboard_data[player.index] then
             storage.dashboard_data[player.index] = nil
         end
+        
+    -- Planet statistics GUI handlers
+    elseif PLANET_STATS_ENABLED and element.name == "close_planet_stats" then
+        if player.gui.screen.planet_stats_frame then
+            player.gui.screen.planet_stats_frame.destroy()
+        end
+        if storage.planet_stats_state and storage.planet_stats_state[player.index] then
+            storage.planet_stats_state[player.index].auto_show = false
+        end
+        
+    elseif PLANET_STATS_ENABLED and string.match(element.name, "^ping_entity_") then
+        local entity_index = tonumber(string.match(element.name, "(%d+)$"))
+        if entity_index then
+            -- Get current surface stats to find the entity
+            local surface_stats = planet_stats.collect_surface_stats(player.surface)
+            if surface_stats and surface_stats.entity_shortages[entity_index] then
+                local shortage = surface_stats.entity_shortages[entity_index]
+                
+                -- Create ping at entity position
+                player.create_local_flying_text{
+                    text = {"gui.entity-pinged", shortage.name},
+                    position = shortage.position,
+                    time_to_live = 180
+                }
+                
+                -- Center camera on entity
+                player.zoom_to_world(shortage.position, 1)
+                
+                -- Create map ping for multiplayer
+                if game.players and #game.players > 1 then
+                    for _, other_player in pairs(game.players) do
+                        if other_player ~= player and other_player.surface == player.surface then
+                            other_player.create_local_flying_text{
+                                text = {"gui.player-pinged-entity", player.name, shortage.name},
+                                position = shortage.position,
+                                time_to_live = 180
+                            }
+                        end
+                    end
+                end
+            end
+        end
     end
 end)
 
@@ -258,6 +366,16 @@ commands.add_command("stats", {"command.stats-help"}, function(command)
     local player = game.players[command.player_index]
     gui_main.create_stats_gui(player, utils, rankings)
 end)
+
+if PLANET_STATS_ENABLED then
+    commands.add_command("planet-stats", {"command.planet-stats-help"}, function(command)
+        local player = game.players[command.player_index]
+        local surface_stats = planet_stats.collect_surface_stats(player.surface)
+        if surface_stats then
+            planet_stats.create_planet_stats_gui(player, surface_stats)
+        end
+    end)
+end
 
 commands.add_command("reset-stats", {"command.reset-stats-help"}, function(command)
     if command.player_index then

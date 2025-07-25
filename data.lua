@@ -293,5 +293,13 @@ data:extend({
         name = "toggle-multiplayer-stats",
         key_sequence = "SHIFT + ALT + S",
         consuming = "none"
-    }
+    },
+    -- Planet stats hotkey (disabled by default)
+    -- To enable: uncomment the block below and set "multiplayer-stats-enable-planet-stats" to true in settings
+    -- {
+    --     type = "custom-input",
+    --     name = "toggle-planet-stats",
+    --     key_sequence = "SHIFT + ALT + P",
+    --     consuming = "none"
+    -- }
 }) 

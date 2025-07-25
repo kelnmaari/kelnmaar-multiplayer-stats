@@ -1,4 +1,42 @@
 ---------------------------------------------------------------------------------------------------
+Version: 5.8.0
+Date: 08. 01. 2025
+  Changes:
+    - Planet Statistics system temporarily disabled as Work-In-Progress (WIP)
+    - Added new startup setting "Enable Planet Statistics" (disabled by default)
+    - Planet Statistics code preserved but inactive until feature is production-ready
+    - Planet Statistics GUI, hotkeys, and commands disabled to prevent potential issues
+    - Feature will be re-enabled in future version after optimization and testing
+  Technical:
+    - Conditional loading of planet_stats module based on startup setting
+    - All planet statistics event handlers wrapped in enable/disable checks
+    - Hotkey registration commented out in data.lua (manual setup required for testing)
+    - Complete preservation of planet statistics codebase for future development
+
+---------------------------------------------------------------------------------------------------
+Version: 5.6.0  
+Date: 02. 01. 2025
+  Major Features:
+    - Added comprehensive Planet Statistics system for real-time monitoring of planetary production
+    - New Planet Statistics GUI displays current production, power generation/consumption, and resource shortages
+    - Interactive shortage alerts with one-click entity pinging for quick troubleshooting
+    - Auto-updates when switching between planets and space platforms
+    - Supports all Space Age surfaces including Nauvis, Vulcanus, Fulgora, Gleba, Aquilo, and space platforms
+  Features:
+    - New hotkey Shift+Alt+P to toggle Planet Statistics window
+    - Smart power balance calculations with color-coded indicators (green/red)
+    - Production overview showing top active recipes with productivity metrics
+    - Resource shortage detection for assembling machines, furnaces, and chemical plants
+    - Real-time entity status monitoring with detailed ingredient analysis
+    - Multiplayer ping system - ping shortage locations to alert other players
+    - Command "/planet-stats" for quick access to planetary statistics
+    - Auto-positioning of statistics window in right side of screen for optimal visibility
+  Translation:
+    - Complete localization support for Planet Statistics across all 8 languages
+    - Added 20+ new localization strings for Planet Statistics interface
+    - Full translation coverage: English, Russian, Chinese, Japanese, Korean, Spanish, Portuguese, Vietnamese
+
+---------------------------------------------------------------------------------------------------
 Version: 5.5.0
 Date: 25. 07. 2025
   Translation:
