@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 5.8.3
+Date: 27. 07. 2025
+  Bugfixes:
+    - CRITICAL: Fixed nth_tick registration using module constants instead of storage access in script.on_load()
+    - CRITICAL: Eliminated storage access during on_load event to prevent multiplayer desynchronization
+    - Fixed "nth_ticks not re-registered" error by using proper Factorio API patterns
+    - Improved nth_tick event lifecycle management for multiplayer stability
+
+---------------------------------------------------------------------------------------------------
 Version: 5.8.2
 Date: 27. 07. 2025
   Bugfixes:
