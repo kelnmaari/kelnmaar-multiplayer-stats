@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 5.8.4
+Date: 27. 07. 2025
+  Bugfixes:
+    - CRITICAL: Complete overhaul of nth_tick event system to eliminate all multiplayer desync errors
+    - CRITICAL: Fixed hardcoded tick values (600, 36000) that caused "nth_ticks not re-registered" errors
+    - CRITICAL: Implemented unified module constants for all periodic events (main, cleanup, GUI refresh)
+    - CRITICAL: Added script.on_nth_tick(nil) to clear handlers before re-registration
+    - Added error handling with pcall wrappers for all nth_tick handlers to prevent crashes
+    - Improved error reporting with detailed messages for debugging nth_tick issues
+    - Enhanced event lifecycle management for rock-solid multiplayer stability
+
+---------------------------------------------------------------------------------------------------
 Version: 5.8.3
 Date: 27. 07. 2025
   Bugfixes:

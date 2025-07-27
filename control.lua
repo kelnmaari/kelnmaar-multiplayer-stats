@@ -21,13 +21,25 @@ local planet_stats = PLANET_STATS_ENABLED and require("lib.planet_stats") or nil
 local player_update_queue = {}
 local queue_index = 1
 
--- CRITICAL: Store update frequency as module constant for on_load compatibility
+-- CRITICAL: All nth_tick intervals as module constants for on_load compatibility
 -- This prevents nth_tick desync errors in multiplayer
-local UPDATE_FREQUENCY = 1800  -- Default value, updated in on_init/on_configuration_changed
+local UPDATE_FREQUENCY = 1800       -- Main stats update (configurable)
+local CLEANUP_FREQUENCY = 36000     -- Cleanup every 10 minutes
+local GUI_REFRESH_FREQUENCY = 600   -- GUI refresh every 10 seconds
 
 -- Get update frequency for event registration
 local function get_update_frequency()
     return UPDATE_FREQUENCY
+end
+
+-- Get cleanup frequency for event registration
+local function get_cleanup_frequency()
+    return CLEANUP_FREQUENCY
+end
+
+-- Get GUI refresh frequency for event registration  
+local function get_gui_refresh_frequency()
+    return GUI_REFRESH_FREQUENCY
 end
 
 -- Initialize player update queue
@@ -83,40 +95,61 @@ end
 
 -- Function to register periodic event handlers
 local function register_periodic_handlers()
+    -- CRITICAL: Get all tick frequencies from module constants to prevent desync
     local update_frequency = get_update_frequency()
+    local cleanup_frequency = get_cleanup_frequency() 
+    local gui_refresh_frequency = get_gui_refresh_frequency()
+    
+    -- Clear any existing handlers to prevent double registration
+    script.on_nth_tick(nil)
     
     -- Main stats update handler (optimized with player queue)
     script.on_nth_tick(update_frequency, function(event)
-        gui_main.update_stats_gui(utils, rankings)
-        
-        -- Update statistics tracking with optimized player batching
-        update_players_batch()
+        -- Wrap in pcall for error safety
+        local success, error_msg = pcall(function()
+            gui_main.update_stats_gui(utils, rankings)
+            update_players_batch()
+        end)
+        if not success then
+            game.print("[Multiplayer Stats] Error in main update: " .. tostring(error_msg))
+        end
     end)
     
     -- Register periodic cleanup
-    script.on_nth_tick(36000, utils.periodic_cleanup) -- Every 10 minutes
+    script.on_nth_tick(cleanup_frequency, function(event)
+        local success, error_msg = pcall(utils.periodic_cleanup)
+        if not success then
+            game.print("[Multiplayer Stats] Error in cleanup: " .. tostring(error_msg))
+        end
+    end)
     
     -- Auto-refresh dashboards every 10 seconds
-    script.on_nth_tick(600, function(event)
-        if not storage.dashboard_data then return end
-        
-        for player_index, data in pairs(storage.dashboard_data) do
-            local player = game.players[player_index]
-            if player and player.valid and player.connected then
-                local frame = player.gui.screen.stats_charts_frame
-                if frame and frame.valid then
-                    local content = frame.charts_content
-                    if content and content.valid then
-                        gui.create_dashboard_content(content, data.target_player_index, utils, rankings)
+    script.on_nth_tick(gui_refresh_frequency, function(event)
+        -- Wrap in pcall for error safety
+        local success, error_msg = pcall(function()
+            if not storage.dashboard_data then return end
+            
+            for player_index, data in pairs(storage.dashboard_data) do
+                local player = game.players[player_index]
+                if player and player.valid and player.connected then
+                    local frame = player.gui.screen.stats_charts_frame
+                    if frame and frame.valid then
+                        local content = frame.charts_content
+                        if content and content.valid then
+                            gui.create_dashboard_content(content, data.target_player_index, utils, rankings)
+                        end
+                    else
+                        -- Remove data if frame is gone
+                        storage.dashboard_data[player_index] = nil
                     end
                 else
-                    -- Remove data if frame is gone
+                    -- Remove data for invalid/disconnected players
                     storage.dashboard_data[player_index] = nil
                 end
-            else
-                -- Remove data for invalid/disconnected players
-                storage.dashboard_data[player_index] = nil
             end
+        end)
+        if not success then
+            game.print("[Multiplayer Stats] Error in GUI refresh: " .. tostring(error_msg))
         end
     end)
 end
