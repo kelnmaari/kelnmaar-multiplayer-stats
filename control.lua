@@ -18,29 +18,71 @@ local gui_main = require("lib.gui_main")
 local planet_stats = PLANET_STATS_ENABLED and require("lib.planet_stats") or nil
 
 -- Store update frequency globally to avoid runtime settings access
-local update_frequency = 300
+local update_frequency = 1800
+
+-- Performance optimization: Player update queue
+local player_update_queue = {}
+local queue_index = 1
+
+-- Initialize player update queue
+local function rebuild_player_queue()
+    player_update_queue = {}
+    for player_index, player in pairs(game.players) do
+        if player.connected then
+            table.insert(player_update_queue, player_index)
+        end
+    end
+    queue_index = 1
+end
+
+-- Update a limited number of players per tick for better performance
+local function update_players_batch()
+    if #player_update_queue == 0 then
+        rebuild_player_queue()
+        return
+    end
+    
+    -- Process max players per update cycle based on setting
+    local max_setting = settings.startup["multiplayer-stats-max-players-per-update"] and 
+                       settings.startup["multiplayer-stats-max-players-per-update"].value or 5
+    local max_players_per_update = math.min(max_setting, #player_update_queue)
+    local updated_count = 0
+    
+    while updated_count < max_players_per_update and #player_update_queue > 0 do
+        local player_index = player_update_queue[queue_index]
+        local player = game.players[player_index]
+        
+        if player and player.connected then
+            utils.init_player(player_index)
+            stats_module.update_player_distance(player_index)
+            stats_module.update_player_status(player)
+            stats_module.update_chart_history(player_index, rankings)
+            rankings.check_achievements(player_index, utils)
+            
+            -- Update planet stats GUI if open
+            if PLANET_STATS_ENABLED and planet_stats then
+                planet_stats.update_planet_stats_gui(player)
+            end
+            
+            updated_count = updated_count + 1
+        end
+        
+        queue_index = queue_index + 1
+        if queue_index > #player_update_queue then
+            queue_index = 1
+            break -- Full cycle completed
+        end
+    end
+end
 
 -- Function to register periodic event handlers
 local function register_periodic_handlers()
-    -- Main stats update handler
+    -- Main stats update handler (optimized with player queue)
     script.on_nth_tick(update_frequency, function(event)
         gui_main.update_stats_gui(utils, rankings)
         
-        -- Update statistics tracking
-        for _, player in pairs(game.players) do
-            if player.connected then
-                utils.init_player(player.index)
-                stats_module.update_player_distance(player.index)
-                stats_module.update_player_status(player)
-                stats_module.update_chart_history(player.index, rankings)
-                rankings.check_achievements(player.index, utils)
-                
-                -- Update planet stats GUI if open
-                if PLANET_STATS_ENABLED and planet_stats then
-                    planet_stats.update_planet_stats_gui(player)
-                end
-            end
-        end
+        -- Update statistics tracking with optimized player batching
+        update_players_batch()
     end)
     
     -- Register periodic cleanup
@@ -116,11 +158,17 @@ script.on_event(defines.events.on_player_joined_game, function(event)
        user_settings["multiplayer-stats-auto-open-gui"].value then
         gui_main.create_stats_gui(player, utils, rankings)
     end
+    
+    -- Rebuild player queue for performance optimization
+    rebuild_player_queue()
 end)
 
 -- MEMORY LEAK FIX: Clean up data when players leave
 script.on_event(defines.events.on_player_left_game, function(event)
     utils.cleanup_player_on_leave(event.player_index)
+    
+    -- Rebuild player queue for performance optimization
+    rebuild_player_queue()
 end)
 
 -- Track crafting

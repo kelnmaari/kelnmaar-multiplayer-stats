@@ -1,4 +1,22 @@
 ---------------------------------------------------------------------------------------------------
+Version: 5.8.1
+Date: 27. 07. 2025
+  Optimizations:
+    - PERFORMANCE: Improved update frequency from 5 seconds to 30 seconds (300 -> 1800 ticks) for better server performance
+    - PERFORMANCE: Added player update queue system to process players in batches instead of all at once
+    - PERFORMANCE: New setting "Max Players Per Update Cycle" allows fine-tuning performance for large servers
+    - PERFORMANCE: Reduced maximum players processed per cycle from unlimited to 5 (configurable 1-20)
+    - PERFORMANCE: Player queue automatically rebuilds when players join/leave for optimal distribution
+  Settings:
+    - Added "multiplayer-stats-max-players-per-update" startup setting (default: 5, range: 1-20)
+    - Updated setting descriptions with performance recommendations for large servers
+    - Improved minimum/maximum values for update frequency setting (300-3600 ticks)
+  Technical:
+    - Optimized main statistics update loop to prevent performance spikes on large multiplayer servers
+    - Better memory management with existing 30-point history limitation per category
+    - Queue-based player processing ensures fair update distribution across all connected players
+
+---------------------------------------------------------------------------------------------------
 Version: 5.8.0
 Date: 25. 07. 2025
   Changes:

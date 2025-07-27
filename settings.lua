@@ -14,9 +14,9 @@ data:extend({
         type = "int-setting",
         name = "multiplayer-stats-update-frequency",
         setting_type = "startup",
-        minimum_value = 60,
-        maximum_value = 600,
-        default_value = 300,
+        minimum_value = 300,
+        maximum_value = 3600,
+        default_value = 1800,
         order = "a-b"
     },
     {
@@ -25,6 +25,15 @@ data:extend({
         setting_type = "startup",
         default_value = false,
         order = "a-c"
+    },
+    {
+        type = "int-setting",
+        name = "multiplayer-stats-max-players-per-update",
+        setting_type = "startup",
+        minimum_value = 1,
+        maximum_value = 20,
+        default_value = 5,
+        order = "a-d"
     },
 
     -- Runtime global settings (can be changed during game, admin only)
