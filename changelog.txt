@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 5.8.2
+Date: 27. 07. 2025
+  Bugfixes:
+    - CRITICAL: Fixed "nth_ticks not re-registered" multiplayer desync error when loading saves
+    - CRITICAL: Improved nth_tick event registration to prevent script event mismatches
+    - Fixed update frequency caching to ensure consistent behavior across save/load cycles
+    - Improved error handling for multiplayer synchronization
+
+---------------------------------------------------------------------------------------------------
 Version: 5.8.1
 Date: 27. 07. 2025
   Optimizations:

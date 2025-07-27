@@ -17,12 +17,19 @@ local gui = require("lib.gui")
 local gui_main = require("lib.gui_main")
 local planet_stats = PLANET_STATS_ENABLED and require("lib.planet_stats") or nil
 
--- Store update frequency globally to avoid runtime settings access
-local update_frequency = 1800
-
 -- Performance optimization: Player update queue
 local player_update_queue = {}
 local queue_index = 1
+
+-- Get update frequency - safe for on_load event
+local function get_update_frequency()
+    -- Use cached value from storage if available (safe for on_load)
+    if storage and storage.mod_config and storage.mod_config.update_frequency then
+        return storage.mod_config.update_frequency
+    end
+    -- Fallback to default value
+    return 1800
+end
 
 -- Initialize player update queue
 local function rebuild_player_queue()
@@ -77,6 +84,8 @@ end
 
 -- Function to register periodic event handlers
 local function register_periodic_handlers()
+    local update_frequency = get_update_frequency()
+    
     -- Main stats update handler (optimized with player queue)
     script.on_nth_tick(update_frequency, function(event)
         gui_main.update_stats_gui(utils, rankings)
@@ -117,30 +126,34 @@ end
 script.on_init(function()
     storage.players = {}
     storage.gui_state = {}
+    storage.mod_config = {}
     if PLANET_STATS_ENABLED then
         storage.planet_stats_state = {}
     end
     
-    -- Get update frequency from startup settings once
-    update_frequency = settings.startup["multiplayer-stats-update-frequency"] and 
-                      settings.startup["multiplayer-stats-update-frequency"].value or 300
+    -- Get update frequency from startup settings and cache it
+    storage.mod_config.update_frequency = settings.startup["multiplayer-stats-update-frequency"] and 
+                                         settings.startup["multiplayer-stats-update-frequency"].value or 1800
     
     -- Register periodic handlers
     register_periodic_handlers()
 end)
 
 script.on_load(function()
-    -- Register periodic handlers on load to avoid desync
+    -- CRITICAL: Register periodic handlers on load to avoid desync
+    -- This prevents the "nth_ticks not re-registered" error in multiplayer
+    -- We use cached settings from storage to avoid accessing settings during on_load
     register_periodic_handlers()
 end)
 
 script.on_configuration_changed(function()
     storage.players = storage.players or {}
     storage.gui_state = storage.gui_state or {}
+    storage.mod_config = storage.mod_config or {}
     
-    -- Update frequency from startup settings (only during configuration change)
-    update_frequency = settings.startup["multiplayer-stats-update-frequency"] and 
-                      settings.startup["multiplayer-stats-update-frequency"].value or 300
+    -- Update frequency from startup settings and cache it
+    storage.mod_config.update_frequency = settings.startup["multiplayer-stats-update-frequency"] and 
+                                         settings.startup["multiplayer-stats-update-frequency"].value or 1800
     
     -- Note: script.on_nth_tick handlers are automatically cleared on configuration change
     -- So we just need to re-register them
@@ -444,9 +457,7 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
     
     -- Handle global settings changes
     if event.setting_type == "runtime-global" then
-        if setting_name == "multiplayer-stats-update-frequency" then
-            game.print({"message.setting-requires-restart"})
-        elseif setting_name == "multiplayer-stats-enable-achievements" then
+        if setting_name == "multiplayer-stats-enable-achievements" then
             local enabled = settings.global[setting_name].value
             if enabled then
                 game.print({"message.achievements-enabled"})
