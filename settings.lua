@@ -11,20 +11,11 @@ data:extend({
         order = "a-a"
     },
     {
-        type = "int-setting",
-        name = "multiplayer-stats-update-frequency",
-        setting_type = "startup",
-        minimum_value = 300,
-        maximum_value = 3600,
-        default_value = 1800,
-        order = "a-b"
-    },
-    {
         type = "bool-setting",
         name = "multiplayer-stats-enable-planet-stats",
         setting_type = "startup",
         default_value = false,
-        order = "a-c"
+        order = "a-b"
     },
     {
         type = "int-setting",
@@ -33,7 +24,7 @@ data:extend({
         minimum_value = 1,
         maximum_value = 20,
         default_value = 5,
-        order = "a-d"
+        order = "a-c"
     },
 
     -- Runtime global settings (can be changed during game, admin only)

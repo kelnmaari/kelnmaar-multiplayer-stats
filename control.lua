@@ -21,23 +21,24 @@ local planet_stats = PLANET_STATS_ENABLED and require("lib.planet_stats") or nil
 local player_update_queue = {}
 local queue_index = 1
 
--- CRITICAL: All nth_tick intervals as module constants for on_load compatibility
--- This prevents nth_tick desync errors in multiplayer
-local UPDATE_FREQUENCY = 1800       -- Main stats update (configurable)
-local CLEANUP_FREQUENCY = 36000     -- Cleanup every 10 minutes
-local GUI_REFRESH_FREQUENCY = 600   -- GUI refresh every 10 seconds
+-- CRITICAL: Fixed nth_tick intervals - NEVER change these values!
+-- Changing these values between mod versions causes multiplayer desyncs
+-- These must remain constant for the entire lifetime of the mod
+local UPDATE_FREQUENCY = 1800       -- Main stats update - FIXED VALUE
+local CLEANUP_FREQUENCY = 36000     -- Cleanup every 10 minutes - FIXED VALUE  
+local GUI_REFRESH_FREQUENCY = 600   -- GUI refresh every 10 seconds - FIXED VALUE
 
--- Get update frequency for event registration
+-- Get update frequency for event registration - always returns same value
 local function get_update_frequency()
     return UPDATE_FREQUENCY
 end
 
--- Get cleanup frequency for event registration
+-- Get cleanup frequency for event registration - always returns same value
 local function get_cleanup_frequency()
     return CLEANUP_FREQUENCY
 end
 
--- Get GUI refresh frequency for event registration  
+-- Get GUI refresh frequency for event registration - always returns same value
 local function get_gui_refresh_frequency()
     return GUI_REFRESH_FREQUENCY
 end
@@ -162,11 +163,7 @@ script.on_init(function()
         storage.planet_stats_state = {}
     end
     
-    -- CRITICAL: Update module constant for nth_tick registration
-    UPDATE_FREQUENCY = settings.startup["multiplayer-stats-update-frequency"] and 
-                      settings.startup["multiplayer-stats-update-frequency"].value or 1800
-    
-    -- Register periodic handlers
+    -- Register periodic handlers (using fixed constants only)
     register_periodic_handlers()
 end)
 
@@ -181,12 +178,8 @@ script.on_configuration_changed(function()
     storage.players = storage.players or {}
     storage.gui_state = storage.gui_state or {}
     
-    -- CRITICAL: Update module constant for nth_tick registration
-    UPDATE_FREQUENCY = settings.startup["multiplayer-stats-update-frequency"] and 
-                      settings.startup["multiplayer-stats-update-frequency"].value or 1800
-    
     -- Note: script.on_nth_tick handlers are automatically cleared on configuration change
-    -- So we just need to re-register them
+    -- So we just need to re-register them (using fixed constants only)
     register_periodic_handlers()
 end)
 

@@ -1,4 +1,18 @@
 ---------------------------------------------------------------------------------------------------
+Version: 5.8.5
+Date: 27. 07. 2025
+  Bugfixes:
+    - CRITICAL: Fixed nth_tick intervals to use permanently fixed constants instead of configurable values
+    - CRITICAL: Removed "Update Frequency" setting that was causing multiplayer desyncs when changed
+    - CRITICAL: All nth_tick values (1800, 600, 36000) are now hardcoded and will never change
+    - Fixed multiplayer desync caused by different tick registration between save/load cycles
+    - Multiplayer stability is now guaranteed - tick events remain consistent across all game sessions
+  Technical:
+    - Removed settings.startup["multiplayer-stats-update-frequency"] completely
+    - UPDATE_FREQUENCY, CLEANUP_FREQUENCY, GUI_REFRESH_FREQUENCY are now immutable constants
+    - Simplified event registration logic to prevent any future desync possibilities
+
+---------------------------------------------------------------------------------------------------
 Version: 5.8.4
 Date: 27. 07. 2025
   Bugfixes:
