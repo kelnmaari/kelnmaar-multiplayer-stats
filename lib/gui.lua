@@ -2,151 +2,148 @@
 -- Интерфейс и GUI функции
 
 local gui = {}
+local charts = require("__factorio-charts__.charts")
 
--- Create visual chart with horizontal progress bars (fixed duplicate data issue)
-function gui.create_visual_chart(parent, data, title, color)
+
+-- Render a professional line chart using factorio-charts
+function gui.render_professional_chart(parent, timeseries, series_to_show, title, height)
     local chart_frame = parent.add{
         type = "frame",
         direction = "vertical",
         style = "kelnmaar_chart_frame"
     }
+    chart_frame.style.horizontally_stretchable = true
     
-    -- Chart title
     chart_frame.add{
         type = "label",
         caption = title,
         style = "kelnmaar_chart_title"
     }
-    
-    if not data or #data == 0 then
-        chart_frame.add{
-            type = "label",
-            caption = "No data available",
-            style = "caption_label"
-        }
-        return chart_frame
+
+    -- Use the 30s interval for display (index 1)
+    local interval_index = 1
+    local interval = timeseries[interval_index]
+
+    -- Ensure chart surface exists (safety check)
+    if not storage.charts_surface then
+        storage.charts_surface = charts.create_surface("kelnmaar-stats-charts")
+    end
+
+    -- Ensure chunk is allocated for the interval we're going to render
+    if not interval.chunk then
+        interval.chunk = charts.allocate_chunk(storage.charts_surface)
     end
     
-    -- Limit to last 10 unique data points (avoid duplicates)
-    local unique_data = {}
-    local seen_values = {}
-    
-    -- Process data from newest to oldest to get latest unique values
-    for i = #data, 1, -1 do
-        local value = data[i]
-        local rounded_value = math.floor(value * 10) / 10  -- Round to 1 decimal
-        if not seen_values[rounded_value] and #unique_data < 10 then
-            table.insert(unique_data, 1, value)  -- Insert at beginning to maintain order
-            seen_values[rounded_value] = true
-        end
-    end
-    
-    if #unique_data == 0 then
-        chart_frame.add{
-            type = "label",
-            caption = "No unique data points",
-            style = "caption_label"
-        }
-        return chart_frame
-    end
-    
-    -- Find max value for scaling
-    local max_val = 0
-    local min_val = unique_data[1]
-    for _, value in ipairs(unique_data) do
-        if value > max_val then max_val = value end
-        if value < min_val then min_val = value end
-    end
-    
-    if max_val == min_val then max_val = min_val + 1 end
-    
-    -- Create horizontal line chart using progress bars
-    local chart_content = chart_frame.add{
-        type = "flow",
-        direction = "vertical"
+    -- Define series configuration (colors and labels)
+    local series_config = {
+        distance = {color = {r=0.0, g=0.5, b=1.0}, label = "Distance Traveled"}, -- Blue
+        score = {color = {r=1.0, g=0.8, b=0.0}, label = "Rank Score"},      -- Gold
+        crafted = {color = {r=0.2, g=0.8, b=0.2}, label = "Items Crafted"},   -- Green
+        combat = {color = {r=1.0, g=0.3, b=0.3}, label = "Enemies Killed"},   -- Red
+        playtime = {color = {r=0.6, g=0.2, b=0.8}, label = "Playtime (Hours)"} -- Purple
     }
-    
-    -- Show trend with horizontal bars representing progression
-    for i, value in ipairs(unique_data) do
-        local progress = (value - min_val) / (max_val - min_val)
-        if max_val == min_val then progress = 1 end
-        
-        local point_flow = chart_content.add{
-            type = "flow",
-            direction = "horizontal"
-        }
-        point_flow.style.vertical_align = "center"
-        
-        -- Point number/index
-        point_flow.add{
-            type = "label",
-            caption = string.format("%2d:", i),
-            style = "bold_label"
-        }
-        
-        -- Progress bar (horizontal representation)
-        local progress_bar = point_flow.add{
-            type = "progressbar",
-            value = progress,
-            style = "kelnmaar_chart_bar"
-        }
-        progress_bar.style.width = 150
-        progress_bar.style.height = 20
-        progress_bar.style.color = color
-        
-        -- Value label
-        point_flow.add{
-            type = "label",
-            caption = string.format(" %.1f", value),
-            style = "kelnmaar_chart_value"
-        }
-        
-        -- Trend indicator (if not first point)
-        if i > 1 then
-            local prev_value = unique_data[i-1]
-            local diff = value - prev_value
-            local trend_icon = ""
-            local trend_color = {r=0.8, g=0.8, b=0.8}
-            
-            if diff > 0 then
-                trend_icon = " ↗"
-                trend_color = {r=0.2, g=0.8, b=0.2}
-            elseif diff < 0 then
-                trend_icon = " ↘"
-                trend_color = {r=0.8, g=0.2, b=0.2}
-            else
-                trend_icon = " →"
-            end
-            
-            local trend_label = point_flow.add{
-                type = "label",
-                caption = trend_icon,
-                style = "bold_label"
-            }
-            trend_label.style.font_color = trend_color
+
+    -- Convert config to series filter for charts library
+    -- If series_to_show is specified, only show those series
+    local selected = nil
+    if series_to_show then
+        selected = {}
+        for _, name in ipairs(series_to_show) do
+            selected[name] = true
         end
     end
+
+    -- Viewport dimensions for consistent layout
+    local viewport_width = 900
+    local viewport_height = 600
+
+    -- Render the time series
+    local ordered_sums, hit_regions = charts.render_time_series(
+        storage.charts_surface.surface,
+        timeseries,
+        interval_index,
+        {
+            selected_series = selected,
+            y_range = nil,  -- Auto-scale Y axis
+            label_format = "time",
+            viewport_width = viewport_width,
+            viewport_height = viewport_height,
+        }
+    )
+
+    -- Debug: Check if data was rendered
+    if not ordered_sums then
+        local series_names = {}
+        if interval.counts then
+            for name, count in pairs(interval.counts) do
+                table.insert(series_names, string.format("%s(%d)", name, count))
+            end
+        end
+        local debug_info = string.format(
+            "No data rendered. Data points: %d/%d, Index: %d, Series: %s",
+            #interval.data,
+            interval.length,
+            interval.index,
+            #series_names > 0 and table.concat(series_names, ", ") or "none"
+        )
+        chart_frame.add{
+            type = "label",
+            caption = debug_info,
+            style = "caption_label"
+        }
+    end
+
+    -- Add camera widget
+    -- Use fixed dimensions matching viewport for consistent appearance
+    local widget_width = 600
+    local widget_height = height or 400
+
+    local camera_params = charts.get_camera_params(interval.chunk, {
+        viewport_width = viewport_width,
+        viewport_height = viewport_height,
+        widget_width = widget_width,
+        widget_height = widget_height,
+        fit_mode = "fit"
+    })
+
+    local camera = chart_frame.add{
+        type = "camera",
+        position = camera_params.position,
+        surface_index = storage.charts_surface.surface.index,
+        zoom = camera_params.zoom
+    }
+    camera.style.width = widget_width
+    camera.style.height = widget_height
     
-    -- Summary stats
-    chart_content.add{type = "line"}
-    local stats_flow = chart_content.add{
+    -- Add Legend - use library colors and ordered series
+    local legend_flow = chart_frame.add{
         type = "flow",
         direction = "horizontal"
     }
-    
-    stats_flow.add{
-        type = "label",
-        caption = string.format("Min: %.1f", min_val),
-        style = "caption_label"
-    }
-    
-    stats_flow.add{type = "empty-widget"}.style.horizontally_stretchable = true
-    
-    stats_flow.add{
-        type = "label",
-        caption = string.format("Max: %.1f", max_val),
-        style = "caption_label"
-    }
+    legend_flow.style.top_margin = 8
+    legend_flow.style.horizontal_spacing = 16
+
+    -- Create legend items based on ordered_sums (if available)
+    if ordered_sums then
+        for _, entry in ipairs(ordered_sums) do
+            local series_name = entry.name
+            local color_index = entry.color_index
+            local color = charts.get_series_color(color_index)
+
+            -- Get display label
+            local display_label = series_config[series_name] and series_config[series_name].label or series_name
+
+            local item_flow = legend_flow.add{type="flow", direction="horizontal"}
+
+            local label = item_flow.add{
+                type = "label",
+                caption = "◼ " .. display_label,
+                style = "caption_label"
+            }
+            label.style.font_color = color
+            label.style.font = "default-bold"
+        end
+    end
     
     return chart_frame
 end
@@ -449,35 +446,16 @@ function gui.create_dashboard_content(content, target_player_index, utils, ranki
         }
     else
         -- Main charts grid
-        local charts_table = content.add{
-            type = "table",
-            column_count = 2
-        }
-        
-        -- Distance chart
-        if #history.distance > 0 then
-            gui.create_visual_chart(charts_table, history.distance, "Distance Traveled", {r=0.2, g=0.8, b=0.2})
-        end
-        
-        -- Score chart
-        if #history.score > 0 then
-            gui.create_visual_chart(charts_table, history.score, "Player Score", {r=0.8, g=0.6, b=0.1})
-        end
-        
-        -- Crafted items chart
-        if #history.crafted > 0 then
-            gui.create_visual_chart(charts_table, history.crafted, "Items Crafted", {r=0.1, g=0.6, b=0.8})
-        end
-        
-        -- Combat chart
-        if #history.combat > 0 then
-            gui.create_visual_chart(charts_table, history.combat, "Enemies Killed", {r=0.8, g=0.2, b=0.2})
-        end
-        
-        -- Playtime chart (full width)
-        content.add{type = "line"}
-        if #history.playtime > 0 then
-            gui.create_visual_chart(content, history.playtime, "Playtime (Hours)", {r=0.6, g=0.2, b=0.8})
+        local ts = storage.player_timeseries and storage.player_timeseries[target_player_index]
+        if ts then
+            -- Main large chart
+            gui.render_professional_chart(content, ts, nil, "Overview & Access Statistics", 450)
+        else
+            content.add{
+                type = "label",
+                caption = "📈 Initializing time series data...",
+                style = "caption_label"
+            }
         end
     end
     

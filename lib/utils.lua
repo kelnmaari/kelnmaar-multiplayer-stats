@@ -2,6 +2,7 @@
 -- Вспомогательные функции для мода статистики
 
 local utils = {}
+local charts = require("__factorio-charts__.charts")
 
 -- Format playtime from ticks to readable string
 function utils.format_playtime(ticks)
@@ -100,6 +101,24 @@ function utils.cleanup_player_on_leave(player_index)
     -- MEMORY LEAK FIX: Clean up chart history for disconnected players
     if storage.chart_history and storage.chart_history[player_index] then
         storage.chart_history[player_index] = nil
+    end
+    
+    -- MEMORY LEAK FIX: Clean up professional charts resources
+    if storage.player_timeseries and storage.player_timeseries[player_index] then
+        local ts = storage.player_timeseries[player_index]
+        for _, interval in ipairs(ts) do
+            -- Destroy render objects (lines)
+            if interval.line_ids then
+                for _, obj in ipairs(interval.line_ids) do
+                    if obj.valid then obj.destroy() end
+                end
+            end
+            -- Free chunk back to pool
+            if interval.chunk then
+                charts.free_chunk(storage.charts_surface, interval.chunk)
+            end
+        end
+        storage.player_timeseries[player_index] = nil
     end
 end
 
@@ -211,6 +230,41 @@ function utils.init_chart_history(player_index)
             combat = {},
             playtime = {}
         }
+    end
+end
+
+-- Initialize time-series history for factorio-charts
+function utils.init_player_timeseries(player_index)
+    if not storage.player_timeseries then
+        storage.player_timeseries = {}
+    end
+    
+    if not storage.player_timeseries[player_index] then
+        -- Define intervals: 30s, 5m, 1h
+        -- Note: ticks parameter is used for TTL calculation and display labels
+        -- Data is added every time add_datapoint is called (every UPDATE_FREQUENCY = 1800 ticks)
+        local defs = {
+            {name = "30s", ticks = 1800, steps = 10, length = 120}, -- 60 minutes (120 points * 30s)
+            {name = "5m",  ticks = 18000, steps = 12, length = 144}, -- 12 hours (144 points * 5m)
+            {name = "1h",  ticks = 216000, steps = nil, length = 168} -- 7 days (168 points * 1h)
+        }
+        storage.player_timeseries[player_index] = charts.create_time_series(defs)
+    end
+end
+
+-- Initialize planet power history
+function utils.init_planet_timeseries(surface_name)
+    if not storage.planet_timeseries then
+        storage.planet_timeseries = {}
+    end
+    
+    if not storage.planet_timeseries[surface_name] then
+        local defs = {
+            {name = "30s", ticks = 1800, steps = 10, length = 60},
+            {name = "5m",  ticks = 18000, steps = 12, length = 60},
+            {name = "1h",  ticks = 216000, steps = nil, length = 120}
+        }
+        storage.planet_timeseries[surface_name] = charts.create_time_series(defs)
     end
 end
 
