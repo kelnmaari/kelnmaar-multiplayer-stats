@@ -1,6 +1,6 @@
 {
   "name": "kelnmaar-multiplayer-stats",
-  "version": "5.8.7",
+  "version": "6.0.0",
   "title": "KelnMaar's Multiplayer Statistics",
   "author": "KelnMaar",
   "description": "Comprehensive multiplayer statistics with 22-tier ranking system and 36 challenging achievements! Features visual planet icons (🪐🌋🌩️❄️🌿), player comparisons, crafting history, real-time leaderboards, and complete Space Age integration. Perfect for competitive multiplayer servers with extreme survival challenges up to 1000 hours.",
@@ -9,4 +9,4 @@
     "base >= 2.0.0",
     "space-age >= 2.0.0"
   ]
-} 
+}

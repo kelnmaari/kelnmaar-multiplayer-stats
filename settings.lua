@@ -14,7 +14,7 @@ data:extend({
         type = "bool-setting",
         name = "multiplayer-stats-enable-planet-stats",
         setting_type = "startup",
-        default_value = false,
+        default_value = true,
         order = "a-b"
     },
     {

@@ -1,4 +1,39 @@
 ---------------------------------------------------------------------------------------------------
+Version: 6.0.0
+Date: 03. 02. 2026
+  Features:
+    - MAJOR: Complete Factorio 2.0 Energy Statistics Overhaul
+    - Added high-fidelity [CALC] mode for energy statistics with 100% accuracy
+    - Implemented 5-tier property cascade for power production (supports Bob's Power, Angel's, etc.)
+    - Support for Burner Generators, Solar Panels, and advanced 2.0 prototypes
+    - UI: Added global vertical scrolling support for Planet Stats window
+    - UI: Planet Stats window now automatically adapts to screen resolution (max 750px height)
+  Optimizations:
+    - Improved dynamic entity scanning (now discovers modded types like burner-generators)
+    - All power API calls are now protected (pcall) to prevent crashes with modded prototypes
+    - Switched to theoretical maximum values in [CALC] mode for better infrastructure planning
+  Bugfixes:
+    - Fixed Planet Stats [API] mode not working in Factorio 2.0 (migrated to surface.get_electric_network_statistics)
+    - Fixed Solar Panels showing 0.0 MW production at night in [CALC] mode
+    - Fixed Burner Generators (Bob's Mods) missing from statistics
+    - Fixed critical crash when accessing proto.max_energy_usage in 2.0
+    - Fixed window overflow issues on small resolutions with many entities
+
+Version: 5.8.8
+Date: 03. 02. 2026
+  Features:
+    - Planet stats now uses asynchronous data collection (200 entities per tick) for better performance
+    - Planet stats GUI now uses two-column layout (Production left, Power/Shortages right)
+    - Main stats window is now draggable with position saved per player
+  Optimizations:
+    - Power statistics now use electric_network_statistics API when available
+    - Reduced game lag when opening planet stats on large bases
+  Bugfixes:
+    - Fixed planet stats hotkey not working when setting was disabled by default
+    - Fixed planet stats GUI duplicating content when updated
+    - Fixed action buttons changing from icons to text after GUI refresh
+
+---------------------------------------------------------------------------------------------------
 Version: 5.8.7
 Date: 03. 02. 2026
   Features:

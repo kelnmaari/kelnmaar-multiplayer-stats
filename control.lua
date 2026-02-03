@@ -155,6 +155,35 @@ local function register_periodic_handlers()
             game.print("[Multiplayer Stats] Error in GUI refresh: " .. tostring(error_msg))
         end
     end)
+    
+    -- Planet stats async processing handler
+    if PLANET_STATS_ENABLED and planet_stats then
+        local planet_stats_interval = planet_stats.get_processing_interval()
+        script.on_nth_tick(planet_stats_interval, function(event)
+            local success, error_msg = pcall(function()
+                if not storage.planet_stats_processing then return end
+                
+                for player_index, state in pairs(storage.planet_stats_processing) do
+                    if state.in_progress then
+                        -- Process batch
+                        local still_processing = planet_stats.process_batch(player_index)
+                        
+                        -- Update GUI with current stats
+                        local player = game.players[player_index]
+                        if player and player.valid and player.connected then
+                            local stats, in_progress, current, total = planet_stats.get_current_stats(player_index)
+                            if stats then
+                                planet_stats.update_planet_stats_content(player, stats)
+                            end
+                        end
+                    end
+                end
+            end)
+            if not success then
+                game.print("[Multiplayer Stats] Error in planet stats processing: " .. tostring(error_msg))
+            end
+        end)
+    end
 end
 
 -- Event handlers
@@ -163,6 +192,7 @@ script.on_init(function()
     storage.gui_state = {}
     if PLANET_STATS_ENABLED then
         storage.planet_stats_state = {}
+        storage.planet_stats_processing = {}
     end
     
     -- Register periodic handlers (using fixed constants only)
@@ -263,13 +293,15 @@ script.on_event("toggle-multiplayer-stats", function(event)
     utils.init_player(event.player_index)
     
     -- Check if GUI is open
-    local gui_exists = player.gui.top.multiplayer_stats_frame ~= nil
+    local gui_exists = player.gui.screen.multiplayer_stats_frame ~= nil
     
     if gui_exists then
-        player.gui.top.multiplayer_stats_frame.destroy()
+        -- Save position before closing
         if storage.gui_state and storage.gui_state[event.player_index] then
+            storage.gui_state[event.player_index].gui_position = player.gui.screen.multiplayer_stats_frame.location
             storage.gui_state[event.player_index].gui_open = false
         end
+        player.gui.screen.multiplayer_stats_frame.destroy()
     else
         gui_main.create_stats_gui(player, utils, rankings)
     end
@@ -324,12 +356,34 @@ if PLANET_STATS_ENABLED then
         local planet_gui_exists = player.gui.screen.planet_stats_frame ~= nil
         
         if planet_gui_exists then
+            -- Close GUI and stop async processing
             player.gui.screen.planet_stats_frame.destroy()
+            planet_stats.stop_async_collection(event.player_index)
             storage.planet_stats_state[event.player_index].auto_show = false
         else
-            local surface_stats = planet_stats.collect_surface_stats(player.surface)
-            if surface_stats then
-                planet_stats.create_planet_stats_gui(player, surface_stats)
+            -- Start async collection and show GUI immediately with initial data
+            local state = planet_stats.start_async_collection(player)
+            if state then
+                -- Create GUI with initial stats (will be updated as processing continues)
+                planet_stats.create_planet_stats_gui(player, state.stats)
+                storage.planet_stats_state[event.player_index].auto_show = true
+            else
+                -- Fallback to sync if async fails
+                local surface_stats = planet_stats.collect_surface_stats(player.surface)
+                planet_stats.create_planet_stats_gui(player, surface_stats or {
+                    surface_name = player.surface.name,
+                    production = {},
+                    power_generation = 0,
+                    power_consumption = 0,
+                    entity_shortages = {},
+                    total_entities = 0,
+                    working_entities = 0,
+                    processed_entities = 0,
+                    power_producers = 0,
+                    power_consumers = 0,
+                    debug_power_info = {},
+                    network_power = nil
+                })
                 storage.planet_stats_state[event.player_index].auto_show = true
             end
         end
@@ -342,8 +396,12 @@ script.on_event(defines.events.on_gui_click, function(event)
     local element = event.element
     
     if element.name == "close_stats_gui" then
-        if player.gui.top.multiplayer_stats_frame then
-            player.gui.top.multiplayer_stats_frame.destroy()
+        if player.gui.screen.multiplayer_stats_frame then
+            -- Save position before closing
+            if storage.gui_state and storage.gui_state[event.player_index] then
+                storage.gui_state[event.player_index].gui_position = player.gui.screen.multiplayer_stats_frame.location
+            end
+            player.gui.screen.multiplayer_stats_frame.destroy()
         end
         if storage.gui_state and storage.gui_state[event.player_index] then
             storage.gui_state[event.player_index].gui_open = false
@@ -384,6 +442,21 @@ script.on_event(defines.events.on_gui_click, function(event)
     elseif element.name == "close_rankings" then
         if player.gui.screen.rankings_frame then
             player.gui.screen.rankings_frame.destroy()
+        end
+        
+    elseif element.name == "close_planet_stats" then
+        if player.gui.screen.planet_stats_frame then
+            -- Save position before closing
+            if storage.planet_stats_state and storage.planet_stats_state[event.player_index] then
+                storage.planet_stats_state[event.player_index].gui_position = player.gui.screen.planet_stats_frame.location
+            end
+            player.gui.screen.planet_stats_frame.destroy()
+            if planet_stats then
+                planet_stats.stop_async_collection(event.player_index)
+            end
+            if storage.planet_stats_state[event.player_index] then
+                storage.planet_stats_state[event.player_index].auto_show = false
+            end
         end
         
     elseif string.match(element.name, "^show_player_details_") then
@@ -479,6 +552,27 @@ if PLANET_STATS_ENABLED then
     end)
 end
 
+-- Handle GUI location changes to persist position
+script.on_event(defines.events.on_gui_location_changed, function(event)
+    local element = event.element
+    if not element or not element.valid then return end
+    
+    local player_index = event.player_index
+    
+    -- Save planet stats frame position
+    if element.name == "planet_stats_frame" then
+        if not storage.planet_stats_state then storage.planet_stats_state = {} end
+        if not storage.planet_stats_state[player_index] then storage.planet_stats_state[player_index] = {} end
+        storage.planet_stats_state[player_index].gui_position = element.location
+    
+    -- Save main stats frame position
+    elseif element.name == "multiplayer_stats_frame" then
+        if not storage.gui_state then storage.gui_state = {} end
+        if not storage.gui_state[player_index] then storage.gui_state[player_index] = {} end
+        storage.gui_state[player_index].gui_position = element.location
+    end
+end)
+
 commands.add_command("reset-stats", {"command.reset-stats-help"}, function(command)
     if command.player_index then
         local player = game.players[command.player_index]
@@ -513,10 +607,14 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
         local player = game.players[player_index]
         if setting_name == "multiplayer-stats-auto-open-gui" then
             local enabled = settings.get_player_settings(player_index)[setting_name].value
-            if enabled and not player.gui.top.multiplayer_stats_frame then
+            if enabled and not player.gui.screen.multiplayer_stats_frame then
                 gui_main.create_stats_gui(player, utils, rankings)
-            elseif not enabled and player.gui.top.multiplayer_stats_frame then
-                player.gui.top.multiplayer_stats_frame.destroy()
+            elseif not enabled and player.gui.screen.multiplayer_stats_frame then
+                -- Save position before closing
+                if storage.gui_state and storage.gui_state[player_index] then
+                    storage.gui_state[player_index].gui_position = player.gui.screen.multiplayer_stats_frame.location
+                end
+                player.gui.screen.multiplayer_stats_frame.destroy()
                 storage.gui_state[player_index].gui_open = false
             end
         end

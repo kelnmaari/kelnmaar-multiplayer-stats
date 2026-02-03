@@ -7,40 +7,83 @@ local gui_main = {}
 function gui_main.create_stats_gui(player, utils, rankings)
     local player_index = player.index
     
-    -- Destroy existing GUI if present
+    -- Initialize gui_state if needed
+    if not storage.gui_state then
+        storage.gui_state = {}
+    end
+    if not storage.gui_state[player_index] then
+        storage.gui_state[player_index] = {
+            gui_open = false,
+            gui_collapsed = false,
+            gui_position = nil  -- Will store {x, y} for each player
+        }
+    end
+    
+    -- Save current position before destroying
+    if player.gui.screen.multiplayer_stats_frame then
+        storage.gui_state[player_index].gui_position = player.gui.screen.multiplayer_stats_frame.location
+        player.gui.screen.multiplayer_stats_frame.destroy()
+    end
+    -- Also check old top location for migration
     if player.gui.top.multiplayer_stats_frame then
         player.gui.top.multiplayer_stats_frame.destroy()
     end
     
-    -- Main frame attached to top panel (near minimap)
-    local frame = player.gui.top.add{
+    -- Main frame in screen (allows dragging)
+    local frame = player.gui.screen.add{
         type = "frame",
         name = "multiplayer_stats_frame",
-        direction = "vertical",
-        style = "kelnmaar_main_stats_frame"
+        direction = "vertical"
     }
     
-    -- Title bar with controls
+    -- Restore saved position or set default
+    local saved_pos = storage.gui_state[player_index].gui_position
+    if saved_pos then
+        frame.location = saved_pos
+    else
+        -- Default position: top-left area
+        frame.location = {x = 300, y = 50}
+    end
+    
+    -- Draggable title bar
     local titlebar = frame.add{
         type = "flow",
-        direction = "horizontal",
-        style = "horizontal_flow"
+        name = "stats_titlebar",
+        direction = "horizontal"
     }
+    titlebar.style.horizontal_spacing = 8
+    titlebar.style.vertical_align = "center"
     
-    -- Title
-    titlebar.add{
+    -- Full-width drag handle with title inside
+    local drag_handle = titlebar.add{
+        type = "empty-widget",
+        style = "draggable_space_header"
+    }
+    drag_handle.style.height = 24
+    drag_handle.style.minimal_width = 150
+    drag_handle.style.horizontally_stretchable = true
+    drag_handle.drag_target = frame
+    
+    -- Title (overlaid on drag handle - positioned absolutely would be ideal but we use flow)
+    local title_label = titlebar.add{
         type = "label",
         caption = {"gui.stats-title"},
         style = "frame_title"
     }
+    title_label.drag_target = frame  -- Make title also draggable
     
+    -- Add another drag space after title for balance
     local spacer = titlebar.add{
-        type = "empty-widget"
+        type = "empty-widget",
+        style = "draggable_space_header"
     }
+    spacer.style.height = 24
+    spacer.style.minimal_width = 30
     spacer.style.horizontally_stretchable = true
+    spacer.drag_target = frame
     
     -- Collapse/expand button
-    local collapse_sprite = storage.gui_state[player_index].gui_collapsed and "utility/forward_arrow" or "utility/backward_arrow"
+    local collapse_sprite = storage.gui_state[player_index].gui_collapsed and "utility/expand" or "utility/collapse"
     titlebar.add{
         type = "sprite-button",
         name = "toggle_collapse_stats_gui",
@@ -71,7 +114,7 @@ function gui_main.create_stats_gui(player, utils, rankings)
     titlebar.add{
         type = "sprite-button",
         name = "close_stats_gui",
-        sprite = "utility/close_black",
+        sprite = "utility/close",
         style = "frame_action_button",
         tooltip = {"gui.close"}
     }
@@ -92,17 +135,28 @@ function gui_main.create_stats_gui(player, utils, rankings)
             name = "player_stats_table",
             column_count = 9  -- Добавили столбец с планетами
         }
+        player_table.style.horizontal_spacing = 8
+        player_table.style.vertical_spacing = 4
         
-        -- Headers (важные колонки для обзора)
-        player_table.add{type = "label", caption = {"gui.player-name"}, style = "bold_label"}
-        player_table.add{type = "label", caption = {"gui.rank"}, style = "bold_label"}
-        player_table.add{type = "label", caption = {"gui.score"}, style = "bold_label"}
-        player_table.add{type = "label", caption = {"gui.distance"}, style = "bold_label"}
-        player_table.add{type = "label", caption = {"gui.total-crafted"}, style = "bold_label"}
-        player_table.add{type = "label", caption = {"gui.enemies-killed"}, style = "bold_label"}
-        player_table.add{type = "label", caption = {"gui.planets"}, style = "bold_label"}
-        player_table.add{type = "label", caption = {"gui.playtime"}, style = "bold_label"}
-        player_table.add{type = "label", caption = {"gui.actions"}, style = "bold_label"}
+        -- Headers with fixed widths (важные колонки для обзора)
+        local h1 = player_table.add{type = "label", caption = {"gui.player-name"}, style = "bold_label"}
+        h1.style.width = 90
+        local h2 = player_table.add{type = "label", caption = {"gui.rank"}, style = "bold_label"}
+        h2.style.width = 80
+        local h3 = player_table.add{type = "label", caption = {"gui.score"}, style = "bold_label"}
+        h3.style.width = 50
+        local h4 = player_table.add{type = "label", caption = {"gui.distance"}, style = "bold_label"}
+        h4.style.width = 70
+        local h5 = player_table.add{type = "label", caption = {"gui.total-crafted"}, style = "bold_label"}
+        h5.style.width = 60
+        local h6 = player_table.add{type = "label", caption = {"gui.enemies-killed"}, style = "bold_label"}
+        h6.style.width = 60
+        local h7 = player_table.add{type = "label", caption = {"gui.planets"}, style = "bold_label"}
+        h7.style.width = 50
+        local h8 = player_table.add{type = "label", caption = {"gui.playtime"}, style = "bold_label"}
+        h8.style.width = 70
+        local h9 = player_table.add{type = "label", caption = {"gui.actions"}, style = "bold_label"}
+        h9.style.width = 90
         
         -- Fill player data
         for _, game_player in pairs(game.players) do
@@ -166,38 +220,43 @@ function gui_main.create_stats_gui(player, utils, rankings)
                     caption = utils.format_playtime(stats.playtime_ticks or 0)
                 }
                 
-                -- Action buttons flow (4 кнопки)
+                -- Action buttons flow (горизонтально, компактные)
                 local actions_flow = player_table.add{
                     type = "flow",
-                    direction = "vertical"
+                    direction = "horizontal"
                 }
+                actions_flow.style.horizontal_spacing = 4
                 
                 actions_flow.add{
-                    type = "button",
+                    type = "sprite-button",
                     name = "show_player_details_" .. game_player.index,
-                    caption = {"gui.details"},
-                    style = "kelnmaar_nav_button"
+                    sprite = "utility/search",
+                    style = "frame_action_button",
+                    tooltip = {"gui.details"}
                 }
 
                 actions_flow.add{
-                    type = "button",
+                    type = "sprite-button",
                     name = "show_crafting_history_" .. game_player.index,
-                    caption = {"gui.history"},
-                    style = "kelnmaar_nav_button"
+                    sprite = "utility/clock",
+                    style = "frame_action_button",
+                    tooltip = {"gui.history"}
                 }
 
                 actions_flow.add{
-                    type = "button",
+                    type = "sprite-button",
                     name = "compare_with_" .. game_player.index,
-                    caption = {"gui.compare"},
-                    style = "kelnmaar_nav_button"
+                    sprite = "utility/side_menu_production_icon",
+                    style = "frame_action_button",
+                    tooltip = {"gui.compare"}
                 }
 
                 actions_flow.add{
-                    type = "button",
+                    type = "sprite-button",
                     name = "show_charts_" .. game_player.index,
-                    caption = {"gui.charts"},
-                    style = "kelnmaar_nav_button"
+                    sprite = "utility/change_recipe",
+                    style = "frame_action_button",
+                    tooltip = {"gui.charts"}
                 }
             end
         end
@@ -214,8 +273,8 @@ function gui_main.update_stats_gui(utils, rankings)
         if gui_state.gui_open then
             local player = game.players[player_index]
             -- MEMORY LEAK FIX: Check if player exists, is valid and connected
-            if player and player.valid and player.connected and player.gui.top.multiplayer_stats_frame then
-                local frame = player.gui.top.multiplayer_stats_frame
+            if player and player.valid and player.connected and player.gui.screen.multiplayer_stats_frame then
+                local frame = player.gui.screen.multiplayer_stats_frame
                 local content = frame.stats_content
                 if content and not gui_state.gui_collapsed then
                     local player_table = content.player_stats_table
@@ -259,12 +318,38 @@ function gui_main.update_stats_gui(utils, rankings)
                                 -- Playtime
                                 player_table.add{type = "label", caption = utils.format_playtime(stats.playtime_ticks or 0)}
                                 
-                                -- Action buttons flow (4 кнопки)
-                                local actions_flow = player_table.add{type = "flow", direction = "vertical"}
-                                actions_flow.add{type = "button", name = "show_player_details_" .. game_player.index, caption = {"gui.details"}, style = "kelnmaar_nav_button"}
-                                actions_flow.add{type = "button", name = "show_crafting_history_" .. game_player.index, caption = {"gui.history"}, style = "kelnmaar_nav_button"}
-                                actions_flow.add{type = "button", name = "compare_with_" .. game_player.index, caption = {"gui.compare"}, style = "kelnmaar_nav_button"}
-                                actions_flow.add{type = "button", name = "show_charts_" .. game_player.index, caption = {"gui.charts"}, style = "kelnmaar_nav_button"}
+                                -- Action buttons flow (горизонтально, компактные)
+                                local actions_flow = player_table.add{type = "flow", direction = "horizontal"}
+                                actions_flow.style.horizontal_spacing = 4
+                                
+                                actions_flow.add{
+                                    type = "sprite-button",
+                                    name = "show_player_details_" .. game_player.index,
+                                    sprite = "utility/search",
+                                    style = "frame_action_button",
+                                    tooltip = {"gui.details"}
+                                }
+                                actions_flow.add{
+                                    type = "sprite-button",
+                                    name = "show_crafting_history_" .. game_player.index,
+                                    sprite = "utility/clock",
+                                    style = "frame_action_button",
+                                    tooltip = {"gui.history"}
+                                }
+                                actions_flow.add{
+                                    type = "sprite-button",
+                                    name = "compare_with_" .. game_player.index,
+                                    sprite = "utility/side_menu_production_icon",
+                                    style = "frame_action_button",
+                                    tooltip = {"gui.compare"}
+                                }
+                                actions_flow.add{
+                                    type = "sprite-button",
+                                    name = "show_charts_" .. game_player.index,
+                                    sprite = "utility/change_recipe",
+                                    style = "frame_action_button",
+                                    tooltip = {"gui.charts"}
+                                }
                             end
                         end
                     end

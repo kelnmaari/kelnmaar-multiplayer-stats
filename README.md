@@ -16,9 +16,16 @@ KelnMaar's Multiplayer Statistics is a comprehensive statistics tracking mod des
 
 • **Complete Space Age Integration**: 
   - Planetary-specific statistics tracking for all 5+ Space Age worlds
+  - Real-time power monitoring with **[API]** and **[CALC]** modes
   - Visual planet icons (Nauvis, Vulcanus, Fulgora, Gleba, Aquilo, Space Platforms)
   - Deep space exploration achievement for endgame content
   - Interplanetary travel monitoring and achievements
+
+• **High-Fidelity Planet Stats (v6.0.0)**:
+  - **Power Grid Precision**: 100% accuracy for both vanilla and modded (Bob's/Angel's) power sources.
+  - **Theoretical Capacity**: [CALC] mode shows full potential generation and maximum load for infrastructure planning.
+  - **Burner & Solar Support**: Accurate tracking of non-electric generators and solar panels (regardless of time of day).
+  - **Adaptive UI**: New integrated vertical scrolling prevents window overflow on any screen resolution.
 
 • **Advanced Data Visualization**: 
   - In-game progress bars and pie charts
@@ -40,7 +47,15 @@ KelnMaar's Multiplayer Statistics is a comprehensive statistics tracking mod des
 
 • **Multiplayer Optimized**: Designed from the ground up for multiplayer environments with efficient data synchronization, automatic cleanup systems, and minimal performance impact even with large player counts.
 
-• **Multi-Language Support**: Complete localization support with Russian and English translations for all UI elements, achievements, and system messages.
+• **Multi-Language Support**: Complete localization for 8 languages:
+  - 🇺🇸 English (Default)
+  - 🇷🇺 Russian (Polished)
+  - 🇨🇳 Chinese (Simplified)
+  - 🇯🇵 Japanese
+  - 🇰🇷 Korean
+  - 🇪🇸 Spanish
+  - 🇧🇷 Portuguese (Brazilian)
+  - 🇻🇳 Vietnamese
 
 ## Hotkeys & Commands
 
@@ -59,3 +74,5 @@ KelnMaar's Multiplayer Statistics is a comprehensive statistics tracking mod des
 | `/reset-stats` | Reset all player statistics (admin only) |
 
 Perfect for multiplayer servers, competitive gameplay, Space Age exploration, and communities that want to track and celebrate player achievements and progress across the entire Factorio universe.
+
+Author's Telegram: https://t.me/kelnmaari

@@ -88,8 +88,8 @@ Available options include:
 
 ### Q: The window is too big/small. Can I resize it?
 **A:** The window automatically adjusts based on the number of players. You can:
-- Collapse it using the arrow button for minimal space
-- Scroll within the content area if there are many players
+- **Scroll within the content area:** The window includes integrated vertical scrolling to handle large factories.
+- **Maximal Height:** The window is capped at 750 pixels to fit most screen resolutions.
 
 ## Multiplayer Features
 
@@ -172,8 +172,17 @@ Admins have additional privileges:
 - **Details:** Shows comprehensive stats including rank, active crafts, combat, building, mining, and space exploration
 - **Crafting History:** Focuses specifically on items crafted with counts and totals
 
-### Q: Can I see statistics for offline players?
-**A:** The mod only shows currently connected players in the main table, but their data is preserved and will reappear when they reconnect.
+### Q: What is the difference between [API] and [CALC] in Planet Stats?
+**A:** 
+- **[CALC]:** This is a predictive mode. It scans every entity on the planet and calculates the **Theoretical Maximum** production and consumption. It's perfect for planning how many more factories you can build before your grid collapses.
+- **[API]:** Shows actual power flow from the game's electric network statistics. This reflects what is happening *right now*.
+
+### Q: Why does [CALC] show more power than the game graphs?
+**A:** Game graphs show actual usage. Our [CALC] mode (v6.0.0+) shows the **Full Potential** of your generators. For example, Solar Panels always show their 100% daylight capacity even at night, and throttled Steam Engines show their maximum possible output.
+
+### Q: Which languages are supported?
+**A:** As of version 6.0.0, the mod is translated into 8 languages: English, Russian, Chinese, Japanese, Korean, Spanish, Portuguese (Brazilian), and Vietnamese.
+- **Full translation:** All 8 languages are fully localized for v6.0.0 features. Professional translators are welcome to contribute and improve the wording!
 
 ## Performance & Optimization
 
@@ -207,6 +216,6 @@ Admins have additional privileges:
 
 ---
 
-**Mod Version:** 5.8.6
+**Mod Version:** 6.0.0
 **Last Updated:** February 2026
-**Author:** KelnMaar 
+**Author:** KelnMaar
