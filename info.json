@@ -9,6 +9,6 @@
     "base >= 2.0.0",
     "space-age >= 2.0.0",
     "factorio-charts >= 1.0.7",
-    "(?)" "bobpower >= 2.0.0"
+    "? bobpower >= 2.0.0"
   ]
 }
