@@ -464,7 +464,7 @@ script.on_event(defines.events.on_gui_click, function(event)
 end)
 
 -- Commands
-commands.add_command("stats", {"command.stats-help"}, function(command)
+commands.add_command("mps-stats", {"command.stats-help"}, function(command)
     local player = game.players[command.player_index]
     gui_main.create_stats_gui(player, utils, rankings)
 end)
