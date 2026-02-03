@@ -2,6 +2,7 @@
 -- Сбор и обработка статистики игроков
 
 local stats = {}
+local charts = require("__factorio-charts__.charts")
 
 -- Damage buffer for batching on_entity_damaged events (performance optimization)
 local damage_buffer = {}
@@ -119,7 +120,7 @@ function stats.create_stats_visualization(stats_data)
 end
 
 -- Update chart history (для визуализации) - добавляет только при значительных изменениях
-function stats.update_chart_history(player_index, rankings)
+function stats.update_chart_history(player_index, rankings, utils)
     if not storage.chart_history then
         storage.chart_history = {}
     end
@@ -189,6 +190,25 @@ function stats.update_chart_history(player_index, rankings)
             end
         end
     end
+    
+    -- Add to factorio-charts time series (RRD style)
+    utils.init_player_timeseries(player_index)
+    charts.add_datapoint(storage.player_timeseries[player_index], {
+        distance = current_values.distance,
+        score = current_values.score,
+        crafted = current_values.crafted,
+        combat = current_values.combat,
+        playtime = current_values.playtime
+    })
+end
+
+-- Update planet power history for charts
+function stats.update_planet_power_history(surface_name, generation, consumption, utils)
+    utils.init_planet_timeseries(surface_name)
+    charts.add_datapoint(storage.planet_timeseries[surface_name], {
+        production = generation,
+        consumption = consumption
+    })
 end
 
 -- Handle crafting completion

@@ -238,7 +238,7 @@ function utils.init_player_timeseries(player_index)
     if not storage.player_timeseries then
         storage.player_timeseries = {}
     end
-    
+
     if not storage.player_timeseries[player_index] then
         -- Define intervals: 30s, 5m, 1h
         -- Note: ticks parameter is used for TTL calculation and display labels
@@ -249,6 +249,36 @@ function utils.init_player_timeseries(player_index)
             {name = "1h",  ticks = 216000, steps = nil, length = 168} -- 7 days (168 points * 1h)
         }
         storage.player_timeseries[player_index] = charts.create_time_series(defs)
+    end
+end
+
+-- Restore chunks for all player timeseries after save load
+-- This is needed because light_ids and line_ids are lost on save/load
+function utils.restore_all_timeseries_chunks()
+    if not storage.charts_surface then
+        return
+    end
+
+    if storage.player_timeseries then
+        for player_index, ts in pairs(storage.player_timeseries) do
+            for _, interval in ipairs(ts) do
+                -- Clear old chunk data (light_ids are invalid after load)
+                interval.chunk = nil
+                interval.line_ids = {}
+                interval.last_rendered_tick = nil
+            end
+        end
+    end
+
+    if storage.planet_timeseries then
+        for surface_name, ts in pairs(storage.planet_timeseries) do
+            for _, interval in ipairs(ts) do
+                -- Clear old chunk data
+                interval.chunk = nil
+                interval.line_ids = {}
+                interval.last_rendered_tick = nil
+            end
+        end
     end
 end
 

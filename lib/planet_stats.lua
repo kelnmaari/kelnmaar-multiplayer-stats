@@ -2,6 +2,8 @@
 -- Статистика планет и космических платформ
 
 local planet_stats = {}
+local charts = require("__factorio-charts__.charts")
+local gui = require("lib.gui")
 
 -- Константы
 local BATCH_SIZE = 200  -- Объектов за один тик
@@ -100,8 +102,8 @@ function planet_stats.start_async_collection(player)
         }
     }
     
-    -- Сразу собираем статистику электросетей (она быстрая)
-    planet_stats.collect_network_power_stats(player, storage.planet_stats_processing[player.index].stats)
+    -- Предварительно заполняем быструю статистику
+    planet_stats.collect_network_power_stats(surface, player.force, storage.planet_stats_processing[player.index].stats)
     
     return storage.planet_stats_processing[player.index]
 end
@@ -138,7 +140,7 @@ function planet_stats.process_batch(player_index)
     -- Обновляем статистику энергии каждый батч для актуальности
     local player = game.players[player_index]
     if player and player.valid then
-        planet_stats.collect_network_power_stats(player, state.stats)
+        planet_stats.collect_network_power_stats(player.surface, player.force, state.stats)
     end
     
     return state.in_progress
@@ -169,12 +171,7 @@ end
 -- ============================================
 
 -- Собрать статистику электросетей через API
-function planet_stats.collect_network_power_stats(player, stats)
-    if not player or not player.valid then return end
-    
-    local surface = player.surface
-    local force = player.force
-    
+function planet_stats.collect_network_power_stats(surface, force, stats)
     if not surface or not surface.valid or not force then return end
     
     -- Пробуем получить статистику электросетей через LuaSurface API (Factorio 2.0)
@@ -729,6 +726,10 @@ function planet_stats.create_planet_stats_gui(player, surface_stats)
     planet_stats.add_production_section(left_column, surface_stats)
     
     planet_stats.add_power_section(right_column, surface_stats)
+    
+    -- Add power history chart if data is available
+    planet_stats.add_power_history_section(right_column, surface_stats.surface_name)
+    
     planet_stats.add_debug_power_section(right_column, surface_stats)
     planet_stats.add_shortages_section(right_column, surface_stats, player)
     
@@ -891,6 +892,77 @@ function planet_stats.add_power_section(parent, stats)
     }
     source_lbl.style.font_color = {r = 0.5, g = 0.8, b = 1}
     source_lbl.style.top_margin = 8
+end
+
+-- Добавить секцию истории электроэнергии
+function planet_stats.add_power_history_section(parent, surface_name)
+    if not storage.planet_timeseries or not storage.planet_timeseries[surface_name] then
+        return
+    end
+    
+    local ts = storage.planet_timeseries[surface_name]
+    
+    -- Create history frame
+    local history_frame = parent.add{
+        type = "frame",
+        direction = "vertical",
+        style = "kelnmaar_info_frame"
+    }
+    history_frame.style.horizontally_stretchable = true
+    
+    history_frame.add{
+        type = "label",
+        caption = "Power History (Last 30m)",
+        style = "kelnmaar_chart_title"
+    }
+    
+    -- Use index 1 (30s intervals)
+    local interval_index = 1
+    local interval = ts[interval_index]
+    
+    -- Ensure chart surface exists (safety check)
+    if not storage.charts_surface then
+        storage.charts_surface = charts.create_surface("kelnmaar-stats-charts")
+    end
+    
+    -- Ensure chunk is allocated
+    if not interval.chunk then
+        interval.chunk = charts.allocate_chunk(storage.charts_surface, {
+            viewport_width = 800,
+            viewport_height = 400
+        })
+    end
+    
+    -- Build chart data (convert to Watts/MW correctly)
+    -- The data is already in Watts (from stats.update_planet_power_history)
+    
+    -- Render the data
+    charts.render_time_series(storage.charts_surface.surface, ts, interval_index, {
+        selected_series = {production = true, consumption = true},
+        label_format = "time",
+        viewport_width = 800,
+        viewport_height = 400
+    })
+    
+    -- Add camera widget
+    -- Calculate proper camera parameters for the widget size
+    local camera_params = charts.get_camera_params(interval.chunk, {
+        viewport_width = 800,
+        viewport_height = 400,
+        widget_width = 340,
+        widget_height = 160,
+        fit_mode = "fit"
+    })
+
+    local camera = history_frame.add{
+        type = "camera",
+        position = camera_params.position,
+        surface_index = storage.charts_surface.surface.index,
+        zoom = camera_params.zoom
+    }
+    camera.style.width = 340
+    camera.style.height = 160
+    camera.style.horizontally_stretchable = true
 end
 
 -- Добавить отладочную секцию энергии

@@ -75,4 +75,10 @@ KelnMaar's Multiplayer Statistics is a comprehensive statistics tracking mod des
 
 Perfect for multiplayer servers, competitive gameplay, Space Age exploration, and communities that want to track and celebrate player achievements and progress across the entire Factorio universe.
 
+## Special Thanks
+
+- **[nickelbob](https://mods.factorio.com/user/nickelbob)** for the excellent [factorio-charts](https://mods.factorio.com/mod/factorio-charts) library that powers our professional time series visualization
+
+## Author
+
 Author's Telegram: https://t.me/kelnmaari

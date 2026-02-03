@@ -10,15 +10,21 @@ function gui.render_professional_chart(parent, timeseries, series_to_show, title
     local chart_frame = parent.add{
         type = "frame",
         direction = "vertical",
-        style = "kelnmaar_chart_frame"
+        style = "inside_deep_frame"
     }
     chart_frame.style.horizontally_stretchable = true
-    
-    chart_frame.add{
-        type = "label",
-        caption = title,
-        style = "kelnmaar_chart_title"
-    }
+    chart_frame.style.padding = 8
+
+    -- Add title if provided
+    if title then
+        local title_label = chart_frame.add{
+            type = "label",
+            caption = title,
+            style = "frame_title"
+        }
+        title_label.style.bottom_margin = 4
+        title_label.style.horizontal_align = "center"
+    end
 
     -- Use the 30s interval for display (index 1)
     local interval_index = 1
@@ -112,16 +118,21 @@ function gui.render_professional_chart(parent, timeseries, series_to_show, title
         surface_index = storage.charts_surface.surface.index,
         zoom = camera_params.zoom
     }
-    camera.style.width = widget_width
+    camera.style.minimal_width = widget_width
     camera.style.height = widget_height
-    
+    camera.style.horizontally_stretchable = true
+    camera.style.top_margin = 4
+
     -- Add Legend - use library colors and ordered series
     local legend_flow = chart_frame.add{
         type = "flow",
         direction = "horizontal"
     }
-    legend_flow.style.top_margin = 8
+    legend_flow.style.top_margin = 4
+    legend_flow.style.bottom_margin = 4
     legend_flow.style.horizontal_spacing = 16
+    legend_flow.style.horizontal_align = "center"
+    legend_flow.style.horizontally_stretchable = true
 
     -- Create legend items based on ordered_sums (if available)
     if ordered_sums then
@@ -134,6 +145,7 @@ function gui.render_professional_chart(parent, timeseries, series_to_show, title
             local display_label = series_config[series_name] and series_config[series_name].label or series_name
 
             local item_flow = legend_flow.add{type="flow", direction="horizontal"}
+            item_flow.style.vertical_align = "center"
 
             local label = item_flow.add{
                 type = "label",
@@ -146,6 +158,109 @@ function gui.render_professional_chart(parent, timeseries, series_to_show, title
     end
     
     return chart_frame
+end
+
+-- Create visual rank progress with all ranks displayed
+function gui.create_rank_progress_visual(parent, current_rank, current_score, next_rank, rankings)
+    local progress_frame = parent.add{
+        type = "frame",
+        direction = "vertical",
+        style = "inside_shallow_frame"
+    }
+    progress_frame.style.padding = 12
+
+    -- Title
+    local title_label = progress_frame.add{
+        type = "label",
+        caption = "Rank Progress",
+        style = "frame_title"
+    }
+    title_label.style.bottom_margin = 8
+
+    -- Current rank display (large and prominent)
+    local current_flow = progress_frame.add{
+        type = "flow",
+        direction = "horizontal"
+    }
+    current_flow.style.vertical_align = "center"
+    current_flow.style.bottom_margin = 12
+
+    local current_icon = current_flow.add{
+        type = "label",
+        caption = current_rank.icon,
+        style = "bold_label"
+    }
+    current_icon.style.font = "default-large-bold"
+    current_icon.style.font_color = current_rank.color or {r=1, g=1, b=0}
+    current_icon.style.right_margin = 8
+
+    local current_name = current_flow.add{
+        type = "label",
+        caption = current_rank.name,
+        style = "bold_label"
+    }
+    current_name.style.font = "default-large-bold"
+
+    current_flow.add{type = "empty-widget"}.style.horizontally_stretchable = true
+
+    current_flow.add{
+        type = "label",
+        caption = "Score: " .. current_score,
+        style = "label"
+    }
+
+    -- Progress bar and next rank info
+    if next_rank then
+        local progress = math.min(1.0, current_score / next_rank.min_score)
+
+        -- Next rank info
+        local next_flow = progress_frame.add{
+            type = "flow",
+            direction = "horizontal"
+        }
+        next_flow.style.bottom_margin = 4
+
+        next_flow.add{
+            type = "label",
+            caption = "Next Rank: " .. next_rank.icon .. " " .. next_rank.name,
+            style = "label"
+        }
+
+        next_flow.add{type = "empty-widget"}.style.horizontally_stretchable = true
+
+        local points_needed = next_rank.min_score - current_score
+        next_flow.add{
+            type = "label",
+            caption = points_needed .. " points needed",
+            style = "caption_label"
+        }
+
+        -- Progress bar
+        local progress_bar = progress_frame.add{
+            type = "progressbar",
+            value = progress,
+            style = "kelnmaar_rank_progress"
+        }
+        progress_bar.style.horizontally_stretchable = true
+        progress_bar.style.height = 24
+
+        -- Progress percentage
+        local percent_label = progress_frame.add{
+            type = "label",
+            caption = string.format("%.1f%% to next rank", progress * 100),
+            style = "caption_label"
+        }
+        percent_label.style.top_margin = 4
+    else
+        -- Max rank achieved
+        progress_frame.add{
+            type = "label",
+            caption = "🎉 Maximum Rank Achieved! 🎉",
+            style = "bold_label"
+        }
+    end
+
+    return progress_frame
 end
 
 -- Create pie chart visualization using flows and colors
@@ -333,21 +448,10 @@ function gui.create_dashboard_content(content, target_player_index, utils, ranki
     
     -- 2. RANK PROGRESS (Moved to second position)
     content.add{type = "line"}
-    local progress_frame = content.add{
-        type = "frame",
-        direction = "vertical",
-        style = "kelnmaar_info_frame"
-    }
-    
-    progress_frame.add{
-        type = "label",
-        caption = "Rank Progress",
-        style = "kelnmaar_chart_title"
-    }
-    
+
     local current_rank = temp_rank
     local current_score = temp_score
-    
+
     -- Find next rank
     local next_rank = nil
     for _, rank in ipairs(rankings.RANKS) do
@@ -356,62 +460,9 @@ function gui.create_dashboard_content(content, target_player_index, utils, ranki
             break
         end
     end
-    
-    if next_rank then
-        local progress = math.min(1.0, current_score / next_rank.min_score)
-        
-        local progress_bar = progress_frame.add{
-            type = "progressbar",
-            value = progress,
-            style = "kelnmaar_rank_progress"
-        }
-        
-        local details_flow = progress_frame.add{
-            type = "flow",
-            direction = "horizontal"
-        }
-        
-        details_flow.add{
-            type = "label",
-            caption = "Current: " .. current_rank.icon .. " " .. current_rank.name,
-            style = "label"
-        }
-        
-        details_flow.add{type = "empty-widget"}.style.horizontally_stretchable = true
-        
-        details_flow.add{
-            type = "label",
-            caption = "Next: " .. next_rank.icon .. " " .. next_rank.name,
-            style = "label"
-        }
-        
-        details_flow.add{
-            type = "label",
-            caption = "Score: " .. current_score .. " / " .. next_rank.min_score,
-            style = "label"
-        }
-        
-        -- Points needed
-        local points_needed = next_rank.min_score - current_score
-        progress_frame.add{
-            type = "label",
-            caption = "Points needed: " .. points_needed,
-            style = "caption_label"
-        }
-        
-    else
-        progress_frame.add{
-            type = "label",
-            caption = "🎉 Maximum Rank Achieved! 🎉",
-            style = "kelnmaar_chart_title"
-        }
-        
-        progress_frame.add{
-            type = "label",
-            caption = current_rank.icon .. " " .. current_rank.name .. " (Score: " .. current_score .. ")",
-            style = "bold_label"
-        }
-    end
+
+    -- Create visual rank progress
+    gui.create_rank_progress_visual(content, current_rank, current_score, next_rank, rankings)
     
     -- 3. ACTIVITY BREAKDOWN (Moved to third position)
     local total_activity = (temp_stats.total_crafted or 0) + (temp_stats.enemies_killed or 0) + (temp_stats.buildings_built or 0)
@@ -434,10 +485,10 @@ function gui.create_dashboard_content(content, target_player_index, utils, ranki
         caption = "📈 Historical Charts",
         style = "kelnmaar_chart_title"
     }
-    
+
     utils.init_chart_history(target_player_index)
     local history = storage.chart_history[target_player_index]
-    
+
     if not history.distance or #history.distance == 0 then
         content.add{
             type = "label",
@@ -448,7 +499,7 @@ function gui.create_dashboard_content(content, target_player_index, utils, ranki
         -- Main charts grid
         local ts = storage.player_timeseries and storage.player_timeseries[target_player_index]
         if ts then
-            -- Main large chart
+            -- Main large chart with title inside the frame
             gui.render_professional_chart(content, ts, nil, "Overview & Access Statistics", 450)
         else
             content.add{

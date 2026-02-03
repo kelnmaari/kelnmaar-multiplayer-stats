@@ -1,4 +1,30 @@
 ---------------------------------------------------------------------------------------------------
+Version: 6.1.0
+Date: 03. 02. 2026
+  Features:
+    - MAJOR: Integrated professional time series charts using factorio-charts library
+    - Added high-resolution line graphs with multi-resolution data (30s, 12h, 7d intervals)
+    - Real-time visualization of Rank Score, Distance Traveled, Items Crafted, Playtime, and Combat
+    - Automatic data persistence across save/load cycles with chunk management
+    - Enhanced rank progress display with large icons, progress bars, and percentage indicators
+  UI Improvements:
+    - Completely redesigned Historical Charts section with professional styling
+    - Improved chart frame borders and alignment with proper Factorio UI standards
+    - Centered legends with color-coded series labels matching graph lines
+    - Cleaner rank progress layout with prominent current rank display
+    - Better visual hierarchy and spacing throughout statistics windows
+  Technical:
+    - Implemented RRDtool-style cascading aggregation for efficient time series storage
+    - Extended buffer lengths: 120 points (60min), 144 points (12h), 168 points (7days)
+    - Automatic chunk allocation and cleanup for render surfaces
+    - Fixed data persistence issues with light IDs and render objects
+  Dependencies:
+    - Added required dependency: factorio-charts >= 1.0.7
+    - Added optional dependency: bobpower >= 2.0.0
+  Special Thanks:
+    - nickelbob for the excellent factorio-charts library
+
+---------------------------------------------------------------------------------------------------
 Version: 6.0.0
 Date: 03. 02. 2026
   Features:
@@ -19,6 +45,7 @@ Date: 03. 02. 2026
     - Fixed critical crash when accessing proto.max_energy_usage in 2.0
     - Fixed window overflow issues on small resolutions with many entities
 
+---------------------------------------------------------------------------------------------------
 Version: 5.8.8
 Date: 03. 02. 2026
   Features:

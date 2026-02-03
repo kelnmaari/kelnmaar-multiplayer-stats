@@ -16,6 +16,7 @@ local stats_module = require("lib.stats")
 local gui = require("lib.gui")
 local gui_main = require("lib.gui_main")
 local planet_stats = PLANET_STATS_ENABLED and require("lib.planet_stats") or nil
+local charts = require("__factorio-charts__.charts")
 
 -- Performance optimization: Player update queue
 local player_update_queue = {}
@@ -75,7 +76,7 @@ local function update_players_batch()
             utils.init_player(player_index)
             stats_module.update_player_distance(player_index)
             stats_module.update_player_status(player)
-            stats_module.update_chart_history(player_index, rankings)
+            stats_module.update_chart_history(player_index, rankings, utils)
             rankings.check_achievements(player_index, utils)
             
             -- Update planet stats GUI if open
@@ -110,6 +111,32 @@ local function register_periodic_handlers()
         local success, error_msg = pcall(function()
             gui_main.update_stats_gui(utils, rankings)
             update_players_batch()
+            
+            -- Update and record history for each unique surface players are on
+            local processed_surfaces = {}
+            for _, player in pairs(game.players) do
+                if player.connected and player.surface and not processed_surfaces[player.surface.name] then
+                    local s_name = player.surface.name
+                    processed_surfaces[s_name] = true
+                    
+                    -- We use the quick API data if available, otherwise skip history update to avoid lag
+                    -- collect_surface_stats is sync but it might be heavy, so we might want to optimize this.
+                    if PLANET_STATS_ENABLED and planet_stats then
+                        -- Get quick network stats without scanning every entity
+                        local quick_stats = {surface_name = s_name}
+                        planet_stats.collect_network_power_stats(player.surface, player.force, quick_stats)
+                        if quick_stats.network_power and quick_stats.network_power.available then
+                            stats_module.update_planet_power_history(
+                                s_name, 
+                                quick_stats.network_power.production, 
+                                quick_stats.network_power.consumption,
+                                utils
+                            )
+                        end
+                    end
+                end
+            end
+            
             -- Flush buffered damage data
             stats_module.flush_damage_buffer()
         end)
@@ -197,22 +224,42 @@ script.on_init(function()
     
     -- Register periodic handlers (using fixed constants only)
     register_periodic_handlers()
+    
+    -- Initialize factorio-charts surface
+    if not storage.charts_surface then
+        storage.charts_surface = charts.create_surface("kelnmaar-stats-charts")
+    end
+    
+    -- Register factorio-charts events
+    charts.register_events()
 end)
 
 script.on_load(function()
-    -- CRITICAL: Register periodic handlers on load to avoid desync
-    -- This prevents the "nth_ticks not re-registered" error in multiplayer
-    -- We use module constant UPDATE_FREQUENCY (no storage access allowed in on_load)
+    -- Register periodic handlers on load to avoid desync
     register_periodic_handlers()
+
+    -- Register factorio-charts events (required for animations and interaction)
+    charts.register_events()
+
+    -- NOTE: We can't restore chunks here because on_load() cannot modify storage
+    -- Chunks will be recreated automatically when GUI is opened (see gui.lua line 36-38)
 end)
 
 script.on_configuration_changed(function()
     storage.players = storage.players or {}
     storage.gui_state = storage.gui_state or {}
-    
+
     -- Note: script.on_nth_tick handlers are automatically cleared on configuration change
     -- So we just need to re-register them (using fixed constants only)
     register_periodic_handlers()
+
+    -- Initialize factorio-charts surface if missing (for existing saves)
+    if not storage.charts_surface then
+        storage.charts_surface = charts.create_surface("kelnmaar-stats-charts")
+    end
+
+    -- Restore chunks for all timeseries after configuration change
+    utils.restore_all_timeseries_chunks()
 end)
 
 script.on_event(defines.events.on_player_joined_game, function(event)
