@@ -615,15 +615,9 @@ function planet_stats.add_info_section(parent, stats)
         style = "kelnmaar_chart_title"
     }
     
-    local info_text = string.format(
-        "Статистика неполная: обработано %d из %d объектов для оптимизации производительности.",
-        stats.processed_entities,
-        stats.total_entities
-    )
-    
     local info_label = info_frame.add{
         type = "label",
-        caption = info_text
+        caption = {"gui.stats-incomplete", stats.processed_entities, stats.total_entities}
     }
     info_label.style.font_color = {r = 1, g = 0.8, b = 0}  -- Желтый цвет для предупреждения
 end
@@ -715,10 +709,10 @@ function planet_stats.add_power_section(parent, stats)
     balance_label.style.font_color = {r = balance_color == "green" and 0 or 1, g = balance_color == "green" and 1 or 0, b = 0}
     
     -- Отладочная информация
-    power_table.add{type = "label", caption = "Производители", style = "bold_label"}
+    power_table.add{type = "label", caption = {"gui.power-producers"}, style = "bold_label"}
     power_table.add{type = "label", caption = tostring(stats.power_producers or 0)}
-    
-    power_table.add{type = "label", caption = "Потребители", style = "bold_label"}
+
+    power_table.add{type = "label", caption = {"gui.power-consumers"}, style = "bold_label"}
     power_table.add{type = "label", caption = tostring(stats.power_consumers or 0)}
 end
 
@@ -732,7 +726,7 @@ function planet_stats.add_debug_power_section(parent, stats)
     
     debug_frame.add{
         type = "label",
-        caption = "Отладка энергии (топ-10)",
+        caption = {"gui.debug-power-title"},
         style = "kelnmaar_chart_title"
     }
     
@@ -748,9 +742,9 @@ function planet_stats.add_debug_power_section(parent, stats)
         type = "table",
         column_count = 2
     }
-    summary_table.add{type = "label", caption = "Общее производство:", style = "bold_label"}
+    summary_table.add{type = "label", caption = {"gui.debug-total-production"}, style = "bold_label"}
     summary_table.add{type = "label", caption = string.format("%.1f MW", total_debug_production / 1000000)}
-    summary_table.add{type = "label", caption = "Общее потребление:", style = "bold_label"}
+    summary_table.add{type = "label", caption = {"gui.debug-total-consumption"}, style = "bold_label"}
     summary_table.add{type = "label", caption = string.format("%.1f MW", total_debug_consumption / 1000000)}
     
     if next(stats.debug_power_info) then
@@ -760,10 +754,10 @@ function planet_stats.add_debug_power_section(parent, stats)
         }
         
         -- Заголовки
-        debug_table.add{type = "label", caption = "Объект", style = "bold_label"}
-        debug_table.add{type = "label", caption = "Количество", style = "bold_label"}
-        debug_table.add{type = "label", caption = "Производство (Вт)", style = "bold_label"}
-        debug_table.add{type = "label", caption = "Потребление (Вт)", style = "bold_label"}
+        debug_table.add{type = "label", caption = {"gui.debug-entity"}, style = "bold_label"}
+        debug_table.add{type = "label", caption = {"gui.debug-count"}, style = "bold_label"}
+        debug_table.add{type = "label", caption = {"gui.debug-production-w"}, style = "bold_label"}
+        debug_table.add{type = "label", caption = {"gui.debug-consumption-w"}, style = "bold_label"}
         
         -- Сортируем по количеству объектов
         local sorted_debug = {}
@@ -784,7 +778,7 @@ function planet_stats.add_debug_power_section(parent, stats)
     else
         debug_frame.add{
             type = "label",
-            caption = "Нет данных отладки"
+            caption = {"gui.debug-no-data"}
         }
     end
 end

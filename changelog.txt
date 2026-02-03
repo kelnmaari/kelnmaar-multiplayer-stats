@@ -1,4 +1,33 @@
 ---------------------------------------------------------------------------------------------------
+Version: 5.8.7
+Date: 03. 02. 2026
+  Features:
+    - Added new hotkey Shift+Alt+R to toggle player rankings window
+  Optimizations:
+    - MEMORY: Fixed dashboard_data and chart_history memory leak when player leaves game
+    - PERFORMANCE: Added rank calculation caching with 5-second TTL to reduce CPU usage
+    - PERFORMANCE: Added damage batching for on_entity_damaged event (buffer flushed every 30s)
+    - PERFORMANCE: Incremental crafted_items cleanup every 100 crafts instead of only on player leave
+  Bugfixes:
+    - Added nil checks to GUI functions to prevent crashes with invalid/disconnected players
+
+---------------------------------------------------------------------------------------------------
+Version: 5.8.6
+Date: 03. 02. 2026
+  Bugfixes:
+    - Fixed hardcoded Russian strings in GUI buttons (Details, History, Compare, Charts) - now properly localized
+    - Fixed nil-access errors in control.lua when gui_state was not initialized
+    - Enabled planet_stats hotkey (Shift+Alt+P) - was previously commented out in data.lua
+    - Removed duplicate style definitions in data.lua that were overwriting each other
+    - Localized all Russian strings in planet_stats.lua for proper i18n support
+  Documentation:
+    - Updated FAQ.md with correct version (5.8.6), achievement count (36), and removed obsolete Update Frequency setting references
+    - Added missing localization key "history" to all 8 language files
+    - Added new localization keys for planet_stats debug section
+  Technical:
+    - Cleaned up data.lua - reduced from 305 to 233 lines by removing duplicate styles
+
+---------------------------------------------------------------------------------------------------
 Version: 5.8.5
 Date: 27. 07. 2025
   Bugfixes:

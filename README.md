@@ -42,4 +42,20 @@ KelnMaar's Multiplayer Statistics is a comprehensive statistics tracking mod des
 
 • **Multi-Language Support**: Complete localization support with Russian and English translations for all UI elements, achievements, and system messages.
 
+## Hotkeys & Commands
+
+### Keyboard Shortcuts
+| Hotkey | Action |
+|--------|--------|
+| `Shift + Alt + S` | Toggle main statistics window |
+| `Shift + Alt + R` | Toggle player rankings window |
+| `Shift + Alt + P` | Toggle planet statistics window (requires "Enable Planet Statistics" setting) |
+
+### Chat Commands
+| Command | Description |
+|---------|-------------|
+| `/stats` | Open the multiplayer statistics window |
+| `/planet-stats` | Show planet statistics for current surface |
+| `/reset-stats` | Reset all player statistics (admin only) |
+
 Perfect for multiplayer servers, competitive gameplay, Space Age exploration, and communities that want to track and celebrate player achievements and progress across the entire Factorio universe.

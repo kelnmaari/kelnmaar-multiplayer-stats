@@ -110,6 +110,8 @@ local function register_periodic_handlers()
         local success, error_msg = pcall(function()
             gui_main.update_stats_gui(utils, rankings)
             update_players_batch()
+            -- Flush buffered damage data
+            stats_module.flush_damage_buffer()
         end)
         if not success then
             game.print("[Multiplayer Stats] Error in main update: " .. tostring(error_msg))
@@ -273,6 +275,18 @@ script.on_event("toggle-multiplayer-stats", function(event)
     end
 end)
 
+-- Toggle player rankings GUI
+script.on_event("toggle-player-rankings", function(event)
+    local player = game.players[event.player_index]
+    
+    -- Check if rankings window is open
+    if player.gui.screen.rankings_frame then
+        player.gui.screen.rankings_frame.destroy()
+    else
+        gui.show_rankings(player, rankings)
+    end
+end)
+
 -- Planet statistics events
 if PLANET_STATS_ENABLED then
     script.on_event(defines.events.on_player_changed_surface, function(event)
@@ -331,10 +345,14 @@ script.on_event(defines.events.on_gui_click, function(event)
         if player.gui.top.multiplayer_stats_frame then
             player.gui.top.multiplayer_stats_frame.destroy()
         end
-        storage.gui_state[event.player_index].gui_open = false
-        
+        if storage.gui_state and storage.gui_state[event.player_index] then
+            storage.gui_state[event.player_index].gui_open = false
+        end
+
     elseif element.name == "toggle_collapse_stats_gui" then
-        storage.gui_state[event.player_index].gui_collapsed = not storage.gui_state[event.player_index].gui_collapsed
+        if storage.gui_state and storage.gui_state[event.player_index] then
+            storage.gui_state[event.player_index].gui_collapsed = not storage.gui_state[event.player_index].gui_collapsed
+        end
         gui_main.create_stats_gui(player, utils, rankings) -- Recreate GUI with new state
         
     elseif element.name == "close_crafting_details" then

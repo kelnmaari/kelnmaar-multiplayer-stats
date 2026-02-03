@@ -288,10 +288,16 @@ end
 function gui.create_dashboard_content(content, target_player_index, utils, rankings)
     -- Clear existing content
     content.clear()
-    
+
     local target_player = game.players[target_player_index]
+    if not target_player or not target_player.valid then
+        return
+    end
     utils.init_player(target_player_index)
     local temp_stats = storage.players[target_player_index]
+    if not temp_stats then
+        return
+    end
     local temp_rank, temp_score = rankings.calculate_player_rank(temp_stats)
     
     -- 1. STATISTICS OVERVIEW (Moved to top)
@@ -627,23 +633,28 @@ function gui.show_achievements(requesting_player, rankings, utils)
     if requesting_player.gui.screen.achievements_frame then
         requesting_player.gui.screen.achievements_frame.destroy()
     end
-    
+
     local frame = requesting_player.gui.screen.add{
         type = "frame",
         name = "achievements_frame",
         caption = {"gui.achievements-title"},
         direction = "vertical"
     }
-    
+
     frame.auto_center = true
-    
+
     local content = frame.add{
         type = "scroll-pane"
     }
     content.style.minimal_width = 600
     content.style.maximal_height = 500
-    
-    local player_achievements = storage.players[requesting_player.index].achievements or {}
+
+    local player_data = storage.players[requesting_player.index]
+    if not player_data then
+        utils.init_player(requesting_player.index)
+        player_data = storage.players[requesting_player.index]
+    end
+    local player_achievements = player_data and player_data.achievements or {}
     
     -- Debug info
     content.add{
@@ -818,12 +829,15 @@ end
 -- Show player comparison window
 function gui.show_player_comparison(requesting_player, target_player_index, utils, rankings)
     local target_player = game.players[target_player_index]
+    if not target_player or not target_player.valid then
+        return
+    end
     local requesting_player_index = requesting_player.index
-    
+
     if requesting_player.gui.screen.comparison_frame then
         requesting_player.gui.screen.comparison_frame.destroy()
     end
-    
+
     local frame = requesting_player.gui.screen.add{
         type = "frame",
         name = "comparison_frame",

@@ -5,42 +5,24 @@ local styles = data.raw["gui-style"].default
 
 -- === CHART STYLES ===
 
--- Custom frame style for chart containers
+-- Chart frame style
 styles.kelnmaar_chart_frame = {
     type = "frame_style",
-    parent = "inside_shallow_frame_with_padding",
-    background_color = {r=0.1, g=0.1, b=0.1, a=0.9},
-    border = {
-        border_width = 2,
-        color = {r=0.3, g=0.6, b=0.8, a=1}
-    },
-    padding = 16,
-    margin = 8
+    parent = "frame",
+    padding = 8,
+    margin = 4,
+    minimal_width = 300,
+    maximal_width = 400
 }
 
--- Custom progressbar style for chart bars
+-- Chart bar style (progress bar for charts)
 styles.kelnmaar_chart_bar = {
     type = "progressbar_style",
     parent = "progressbar",
-    color = {r=0.2, g=0.8, b=0.2, a=1},
     bar_background = {
-        base = {
-            corner_size = 4,
-            position = {0, 0},
-            size = {1, 1},
-            color = {r=0.2, g=0.2, b=0.2, a=0.8}
-        }
-    },
-    bar = {
-        base = {
-            corner_size = 4,
-            position = {0, 0}, 
-            size = {1, 1}
-        }
-    },
-    minimal_width = 20,
-    maximal_width = 20,
-    height = 60
+        base = {position = {0, 0}, corner_size = 8},
+        shadow = {position = {0, 8}, corner_size = 8}
+    }
 }
 
 -- Different colored chart bars
@@ -51,14 +33,14 @@ styles.kelnmaar_chart_bar_green = {
 }
 
 styles.kelnmaar_chart_bar_blue = {
-    type = "progressbar_style", 
+    type = "progressbar_style",
     parent = "kelnmaar_chart_bar",
     color = {r=0.1, g=0.6, b=0.8, a=1}
 }
 
 styles.kelnmaar_chart_bar_red = {
     type = "progressbar_style",
-    parent = "kelnmaar_chart_bar", 
+    parent = "kelnmaar_chart_bar",
     color = {r=0.8, g=0.2, b=0.2, a=1}
 }
 
@@ -104,24 +86,23 @@ styles.kelnmaar_rank_progress = {
 -- Chart title style
 styles.kelnmaar_chart_title = {
     type = "label_style",
-    parent = "heading_2_label",
-    font_color = {r=0.9, g=0.9, b=1.0, a=1},
-    font = "default-large-bold"
+    parent = "frame_title",
+    horizontal_align = "center",
+    font_color = {r=0.9, g=0.9, b=1.0, a=1}
 }
 
 -- Chart value label style
 styles.kelnmaar_chart_value = {
-    type = "label_style", 
-    parent = "caption_label",
-    font_color = {r=0.8, g=0.8, b=0.9, a=1},
-    font = "default-small",
-    horizontal_align = "center"
+    type = "label_style",
+    parent = "label",
+    font = "default-bold",
+    font_color = {r=1.0, g=1.0, b=1.0, a=1}
 }
 
 -- Statistics overview label
 styles.kelnmaar_stats_label = {
     type = "label_style",
-    parent = "bold_label", 
+    parent = "bold_label",
     font_color = {r=0.7, g=0.9, b=1.0, a=1}
 }
 
@@ -134,7 +115,7 @@ styles.kelnmaar_achievement_completed = {
 
 -- Achievement pending style
 styles.kelnmaar_achievement_pending = {
-    type = "label_style", 
+    type = "label_style",
     parent = "label",
     font_color = {r=0.6, g=0.6, b=0.6, a=1}
 }
@@ -154,58 +135,6 @@ styles.kelnmaar_nav_button = {
     default_font_color = {r=0.9, g=0.9, b=1.0, a=1},
     hovered_font_color = {r=1.0, g=1.0, b=1.0, a=1},
     clicked_font_color = {r=0.8, g=0.8, b=0.9, a=1}
-}
-
--- Dashboard frame style
-styles.kelnmaar_dashboard_frame = {
-    type = "frame_style",
-    parent = "frame",
-    padding = 12,
-    margin = 4
-}
-
--- Charts scroll pane style
-styles.kelnmaar_charts_scroll = {
-    type = "scroll_pane_style",
-    parent = "scroll_pane",
-    padding = 8,
-    margin = 4
-}
-
--- Chart frame style
-styles.kelnmaar_chart_frame = {
-    type = "frame_style",
-    parent = "frame",
-    padding = 8,
-    margin = 4,
-    minimal_width = 300,
-    maximal_width = 400
-}
-
--- Chart title style
-styles.kelnmaar_chart_title = {
-    type = "label_style",
-    parent = "frame_title",
-    horizontal_align = "center",
-    font_color = {r=0.9, g=0.9, b=1.0, a=1}
-}
-
--- Chart bar style
-styles.kelnmaar_chart_bar = {
-    type = "progressbar_style",
-    parent = "progressbar",
-    bar_background = {
-        base = {position = {0, 0}, corner_size = 8},
-        shadow = {position = {0, 8}, corner_size = 8}
-    }
-}
-
--- Chart value label style
-styles.kelnmaar_chart_value = {
-    type = "label_style",
-    parent = "label",
-    font = "default-bold",
-    font_color = {r=1.0, g=1.0, b=1.0, a=1}
 }
 
 -- === TABLE STYLES ===
@@ -256,7 +185,7 @@ styles.kelnmaar_main_stats_frame = {
 
 -- Info panel frame
 styles.kelnmaar_info_frame = {
-    type = "frame_style", 
+    type = "frame_style",
     parent = "inside_shallow_frame_with_padding",
     background_color = {r=0.12, g=0.12, b=0.16, a=0.9},
     border = {
@@ -294,12 +223,18 @@ data:extend({
         key_sequence = "SHIFT + ALT + S",
         consuming = "none"
     },
-    -- Planet stats hotkey (disabled by default)
-    -- To enable: uncomment the block below and set "multiplayer-stats-enable-planet-stats" to true in settings
-    -- {
-    --     type = "custom-input",
-    --     name = "toggle-planet-stats",
-    --     key_sequence = "SHIFT + ALT + P",
-    --     consuming = "none"
-    -- }
-}) 
+    -- Planet stats hotkey (feature must be enabled via startup setting "multiplayer-stats-enable-planet-stats")
+    {
+        type = "custom-input",
+        name = "toggle-planet-stats",
+        key_sequence = "SHIFT + ALT + P",
+        consuming = "none"
+    },
+    -- Player rankings hotkey
+    {
+        type = "custom-input",
+        name = "toggle-player-rankings",
+        key_sequence = "SHIFT + ALT + R",
+        consuming = "none"
+    }
+})

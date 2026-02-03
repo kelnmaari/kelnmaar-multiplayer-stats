@@ -46,3 +46,4 @@ factorio-current.log
 script-output/ 
 
 .cursor/
+.claude/

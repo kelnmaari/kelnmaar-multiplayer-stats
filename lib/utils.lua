@@ -91,6 +91,16 @@ function utils.cleanup_player_on_leave(player_index)
     if storage.gui_state and storage.gui_state[player_index] then
         storage.gui_state[player_index].gui_open = false
     end
+    
+    -- MEMORY LEAK FIX: Clean up dashboard data
+    if storage.dashboard_data and storage.dashboard_data[player_index] then
+        storage.dashboard_data[player_index] = nil
+    end
+    
+    -- MEMORY LEAK FIX: Clean up chart history for disconnected players
+    if storage.chart_history and storage.chart_history[player_index] then
+        storage.chart_history[player_index] = nil
+    end
 end
 
 -- Get planet icon sprite based on planet name

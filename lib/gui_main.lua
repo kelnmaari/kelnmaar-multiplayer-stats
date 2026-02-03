@@ -175,28 +175,28 @@ function gui_main.create_stats_gui(player, utils, rankings)
                 actions_flow.add{
                     type = "button",
                     name = "show_player_details_" .. game_player.index,
-                    caption = "Детали",
+                    caption = {"gui.details"},
                     style = "kelnmaar_nav_button"
                 }
-                
+
                 actions_flow.add{
                     type = "button",
                     name = "show_crafting_history_" .. game_player.index,
-                    caption = "История",
+                    caption = {"gui.history"},
                     style = "kelnmaar_nav_button"
                 }
-                
+
                 actions_flow.add{
                     type = "button",
                     name = "compare_with_" .. game_player.index,
-                    caption = "Сравнить",
+                    caption = {"gui.compare"},
                     style = "kelnmaar_nav_button"
                 }
-                
+
                 actions_flow.add{
                     type = "button",
                     name = "show_charts_" .. game_player.index,
-                    caption = "Графики",
+                    caption = {"gui.charts"},
                     style = "kelnmaar_nav_button"
                 }
             end
@@ -261,10 +261,10 @@ function gui_main.update_stats_gui(utils, rankings)
                                 
                                 -- Action buttons flow (4 кнопки)
                                 local actions_flow = player_table.add{type = "flow", direction = "vertical"}
-                                actions_flow.add{type = "button", name = "show_player_details_" .. game_player.index, caption = "Детали", style = "kelnmaar_nav_button"}
-                                actions_flow.add{type = "button", name = "show_crafting_history_" .. game_player.index, caption = "История", style = "kelnmaar_nav_button"}
-                                actions_flow.add{type = "button", name = "compare_with_" .. game_player.index, caption = "Сравнить", style = "kelnmaar_nav_button"}
-                                actions_flow.add{type = "button", name = "show_charts_" .. game_player.index, caption = "Графики", style = "kelnmaar_nav_button"}
+                                actions_flow.add{type = "button", name = "show_player_details_" .. game_player.index, caption = {"gui.details"}, style = "kelnmaar_nav_button"}
+                                actions_flow.add{type = "button", name = "show_crafting_history_" .. game_player.index, caption = {"gui.history"}, style = "kelnmaar_nav_button"}
+                                actions_flow.add{type = "button", name = "compare_with_" .. game_player.index, caption = {"gui.compare"}, style = "kelnmaar_nav_button"}
+                                actions_flow.add{type = "button", name = "show_charts_" .. game_player.index, caption = {"gui.charts"}, style = "kelnmaar_nav_button"}
                             end
                         end
                     end
@@ -277,11 +277,14 @@ end
 -- Show crafting details for a player
 function gui_main.show_crafting_details(requesting_player, target_player_index, utils, rankings, stats_module)
     local target_player = game.players[target_player_index]
-    
+    if not target_player or not target_player.valid then
+        return
+    end
+
     if requesting_player.gui.screen.crafting_details_frame then
         requesting_player.gui.screen.crafting_details_frame.destroy()
     end
-    
+
     local frame = requesting_player.gui.screen.add{
         type = "frame",
         name = "crafting_details_frame",
@@ -555,11 +558,14 @@ end
 -- Show crafting history for a player
 function gui_main.show_crafting_history(requesting_player, target_player_index, utils)
     local target_player = game.players[target_player_index]
-    
+    if not target_player or not target_player.valid then
+        return
+    end
+
     if requesting_player.gui.screen.crafting_history_frame then
         requesting_player.gui.screen.crafting_history_frame.destroy()
     end
-    
+
     local frame = requesting_player.gui.screen.add{
         type = "frame",
         name = "crafting_history_frame",

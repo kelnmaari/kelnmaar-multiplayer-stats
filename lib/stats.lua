@@ -3,6 +3,9 @@
 
 local stats = {}
 
+-- Damage buffer for batching on_entity_damaged events (performance optimization)
+local damage_buffer = {}
+
 -- Update player distance
 function stats.update_player_distance(player_index)
     local player = game.players[player_index]
@@ -204,6 +207,32 @@ function stats.on_player_crafted_item(event)
     -- Update crafted items tracking
     stats_data.crafted_items[item_name] = (stats_data.crafted_items[item_name] or 0) + count
     stats_data.total_crafted = stats_data.total_crafted + count
+    
+    -- OPTIMIZATION: Incremental cleanup every 100 crafts
+    if stats_data.total_crafted % 100 == 0 then
+        local item_count = 0
+        for _ in pairs(stats_data.crafted_items) do
+            item_count = item_count + 1
+            if item_count > 1000 then break end
+        end
+        
+        -- If too many unique items, clean up to top 500
+        if item_count > 1000 then
+            local sorted_items = {}
+            for name, cnt in pairs(stats_data.crafted_items) do
+                table.insert(sorted_items, {name = name, count = cnt})
+            end
+            table.sort(sorted_items, function(a, b) return a.count > b.count end)
+            
+            local cleaned_items = {}
+            for i = 1, 500 do
+                if sorted_items[i] then
+                    cleaned_items[sorted_items[i].name] = sorted_items[i].count
+                end
+            end
+            stats_data.crafted_items = cleaned_items
+        end
+    end
 end
 
 -- Handle entity death (combat tracking)
@@ -241,18 +270,24 @@ function stats.on_player_died(event)
     storage.players[player_index].last_survivor_tick = game.tick
 end
 
--- Handle damage taken by players
+-- Handle damage taken by players (buffered for performance)
 function stats.on_entity_damaged(event)
     if event.entity and event.entity.type == "character" and event.entity.player then
         local player_index = event.entity.player.index
-        
-        if not storage.players[player_index] then
-            return
-        end
-        
-        storage.players[player_index].damage_taken = 
-            (storage.players[player_index].damage_taken or 0) + (event.final_damage_amount or 0)
+        -- Buffer damage instead of writing to storage immediately
+        damage_buffer[player_index] = (damage_buffer[player_index] or 0) + (event.final_damage_amount or 0)
     end
+end
+
+-- Flush buffered damage to storage (call periodically from main update loop)
+function stats.flush_damage_buffer()
+    for player_index, damage in pairs(damage_buffer) do
+        if storage.players and storage.players[player_index] then
+            storage.players[player_index].damage_taken = 
+                (storage.players[player_index].damage_taken or 0) + damage
+        end
+    end
+    damage_buffer = {}
 end
 
 -- Handle building construction

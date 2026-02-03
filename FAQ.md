@@ -49,13 +49,15 @@ Alternatively, install directly through Factorio's in-game mod manager.
 - Playtime
 
 ### Q: What are achievements and how do I unlock them?
-**A:** There are 18 achievements across different categories:
-- **Distance:** Travel 1K, 10K, 50K, 100K tiles
-- **Crafting:** Craft 100, 1K, 10K, 100K items
-- **Combat:** Kill 10, 100, 1K, 5K enemies
-- **Building:** Build 50, 500, 2K, 10K structures
-- **Survival:** Survive 1 or 10 hours without dying
-- **Space Age:** Visit 2, 4, or 5 planets
+**A:** There are 36 achievements across 8 categories:
+- **Distance:** Travel 10K, 100K, 500K, 1M, 10M tiles
+- **Crafting:** Craft 1K, 10K, 100K, 1M, 10M items
+- **Combat:** Kill 1K, 10K, 100K, 500K, 1M enemies
+- **Building:** Build 1K, 10K, 40K, 200K, 1M structures
+- **Survival:** Play for 1, 10, 50, 100, or 1000 hours
+- **No Deaths:** Play 1, 10, 50, 100, or 1000 hours without dying
+- **Space Age:** Visit 1, 2, 3, 4, or 5 planets
+- **Deep Space:** Reach deep space
 
 ### Q: How do I view my achievements?
 **A:** Click the checkmark (✓) button in the statistics window title bar to open the achievements panel.
@@ -80,8 +82,9 @@ Alternatively, install directly through Factorio's in-game mod manager.
 Available options include:
 - Auto-open GUI when joining
 - Notification preferences
-- Update frequency
 - Achievement system toggle
+- Ranking mode selection
+- Notification sounds and duration
 
 ### Q: The window is too big/small. Can I resize it?
 **A:** The window automatically adjusts based on the number of players. You can:
@@ -104,8 +107,9 @@ Admins have additional privileges:
 ### Q: Will this mod slow down the server?
 **A:** No, the mod is optimized for performance:
 - Minimal memory usage with automatic cleanup
-- Efficient data storage
-- Configurable update frequency
+- Efficient data storage with batch player updates
+- Fixed update intervals optimized for large servers (30 seconds)
+- Configurable max players per update cycle
 - No impact on game mechanics
 
 ### Q: What happens when players leave the server?
@@ -135,8 +139,8 @@ Admins have additional privileges:
 ## Troubleshooting
 
 ### Q: The mod crashed with an error. What should I do?
-**A:** 
-1. **Check mod version:** Ensure you have the latest version (4.2.0+)
+**A:**
+1. **Check mod version:** Ensure you have the latest version (5.8.6+)
 2. **Verify dependencies:** Confirm Space Age DLC is installed
 3. **Restart Factorio:** Some settings require a restart
 4. **Report the bug:** Include the full error message
@@ -148,9 +152,7 @@ Admins have additional privileges:
 - Server had significant downtime
 
 ### Q: The GUI doesn't update in real-time.
-**A:** Check **Mod Settings → Startup**:
-- **"Statistics Update Frequency"** (default: 300 ticks = 5 seconds)
-- Lower values = faster updates but more CPU usage
+**A:** The mod updates statistics every 30 seconds (1800 ticks) by default to ensure optimal multiplayer performance. The GUI refresh happens every 10 seconds (600 ticks). These values are fixed to prevent multiplayer desync issues. If you have many players, you can adjust **"Max Players Per Update Cycle"** in Startup Settings.
 
 ### Q: Some achievements aren't unlocking.
 **A:** Verify in **Mod Settings → Runtime - global**:
@@ -183,10 +185,10 @@ Admins have additional privileges:
 - No memory leaks
 
 ### Q: Can I change how often the mod updates?
-**A:** Yes, in **Startup Settings**:
-- **"Statistics Update Frequency"**: 60-600 ticks
-- **Default:** 300 ticks (5 seconds)
-- **Lower values:** More responsive but higher CPU usage
+**A:** The update frequency is fixed at 30 seconds (1800 ticks) to prevent multiplayer desync issues. However, you can configure:
+- **"Max Players Per Update Cycle"**: 1-20 (default: 5)
+- Lower values = better performance for large servers but slower individual updates
+- Recommended: 3-5 for servers with 50+ players
 
 ## Getting Help
 
@@ -205,6 +207,6 @@ Admins have additional privileges:
 
 ---
 
-**Mod Version:** 4.2.0  
-**Last Updated:** July 2025  
+**Mod Version:** 5.8.6
+**Last Updated:** February 2026
 **Author:** KelnMaar 

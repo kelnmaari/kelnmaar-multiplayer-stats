@@ -81,9 +81,25 @@ rankings.RANKS = {
     {name = "transcendent", icon = "🚀", min_score = 409600000, color = {r=0.0, g=1.0, b=0.0}},
     {name = "godlike", icon = "👁️", min_score = 819200000, color = {r=1.0, g=1.0, b=0.0}}
 }
+-- Rank calculation cache for performance optimization
+local rank_cache = {}
+local RANK_CACHE_TTL = 300 -- 5 seconds (300 ticks)
 
--- Calculate player rank and score
-function rankings.calculate_player_rank(stats)
+-- Clear rank cache for a specific player (call when stats change significantly)
+function rankings.invalidate_rank_cache(player_index)
+    rank_cache[player_index] = nil
+end
+
+-- Calculate player rank and score (with optional caching)
+function rankings.calculate_player_rank(stats, player_index)
+    -- Check cache if player_index provided
+    if player_index and rank_cache[player_index] then
+        local cached = rank_cache[player_index]
+        if game.tick - cached.tick < RANK_CACHE_TTL then
+            return cached.rank, cached.score
+        end
+    end
+    
     local score = 0
     
     -- Distance scoring (with diminishing returns)
@@ -150,6 +166,15 @@ function rankings.calculate_player_rank(stats)
         else
             break
         end
+    end
+    
+    -- Cache the result if player_index provided
+    if player_index then
+        rank_cache[player_index] = {
+            rank = current_rank,
+            score = score,
+            tick = game.tick
+        }
     end
     
     return current_rank, score
