@@ -49,4 +49,5 @@ script-output/
 .claude/
 angelsmods/
 bobsmods/
-factorio-charts
+factorio-charts/
+stdlib/

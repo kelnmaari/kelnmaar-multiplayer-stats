@@ -18,6 +18,9 @@ local gui_main = require("lib.gui_main")
 local planet_stats = PLANET_STATS_ENABLED and require("lib.planet_stats") or nil
 local charts = require("__factorio-charts__.charts")
 
+-- Stdlib2 modules
+local Gui = require("__stdlib2__/stdlib/event/gui")
+
 -- Performance optimization: Player update queue
 local player_update_queue = {}
 local queue_index = 1
@@ -248,6 +251,8 @@ end)
 script.on_configuration_changed(function()
     storage.players = storage.players or {}
     storage.gui_state = storage.gui_state or {}
+    storage.chart_history = storage.chart_history or {}
+    storage.player_timeseries = storage.player_timeseries or {}
 
     -- Note: script.on_nth_tick handlers are automatically cleared on configuration change
     -- So we just need to re-register them (using fixed constants only)
@@ -437,136 +442,151 @@ if PLANET_STATS_ENABLED then
     end)
 end
 
--- GUI click handlers
-script.on_event(defines.events.on_gui_click, function(event)
+-- GUI click handlers (using stdlib2 Gui.on_click for pattern-matched event routing)
+
+Gui.on_click("^close_stats_gui$", function(event)
     local player = game.players[event.player_index]
-    local element = event.element
-    
-    if element.name == "close_stats_gui" then
-        if player.gui.screen.multiplayer_stats_frame then
-            -- Save position before closing
-            if storage.gui_state and storage.gui_state[event.player_index] then
-                storage.gui_state[event.player_index].gui_position = player.gui.screen.multiplayer_stats_frame.location
-            end
-            player.gui.screen.multiplayer_stats_frame.destroy()
-        end
+    if player.gui.screen.multiplayer_stats_frame then
         if storage.gui_state and storage.gui_state[event.player_index] then
-            storage.gui_state[event.player_index].gui_open = false
+            storage.gui_state[event.player_index].gui_position = player.gui.screen.multiplayer_stats_frame.location
         end
+        player.gui.screen.multiplayer_stats_frame.destroy()
+    end
+    if storage.gui_state and storage.gui_state[event.player_index] then
+        storage.gui_state[event.player_index].gui_open = false
+    end
+end)
 
-    elseif element.name == "toggle_collapse_stats_gui" then
-        if storage.gui_state and storage.gui_state[event.player_index] then
-            storage.gui_state[event.player_index].gui_collapsed = not storage.gui_state[event.player_index].gui_collapsed
-        end
-        gui_main.create_stats_gui(player, utils, rankings) -- Recreate GUI with new state
-        
-    elseif element.name == "close_crafting_details" then
-        if player.gui.screen.crafting_details_frame then
-            player.gui.screen.crafting_details_frame.destroy()
-        end
-        
-    elseif element.name == "close_crafting_history" then
-        if player.gui.screen.crafting_history_frame then
-            player.gui.screen.crafting_history_frame.destroy()
-        end
-        
-    elseif element.name == "close_comparison" then
-        if player.gui.screen.comparison_frame then
-            player.gui.screen.comparison_frame.destroy()
-        end
+Gui.on_click("^toggle_collapse_stats_gui$", function(event)
+    local player = game.players[event.player_index]
+    if storage.gui_state and storage.gui_state[event.player_index] then
+        storage.gui_state[event.player_index].gui_collapsed = not storage.gui_state[event.player_index].gui_collapsed
+    end
+    gui_main.create_stats_gui(player, utils, rankings)
+end)
 
-    elseif element.name == "show_achievements" then
-        gui.show_achievements(player, rankings, utils)
-        
-    elseif element.name == "close_achievements" then
-        if player.gui.screen.achievements_frame then
-            player.gui.screen.achievements_frame.destroy()
+Gui.on_click("^close_crafting_details$", function(event)
+    local player = game.players[event.player_index]
+    if player.gui.screen.crafting_details_frame then
+        player.gui.screen.crafting_details_frame.destroy()
+    end
+end)
+
+Gui.on_click("^close_crafting_history$", function(event)
+    local player = game.players[event.player_index]
+    if player.gui.screen.crafting_history_frame then
+        player.gui.screen.crafting_history_frame.destroy()
+    end
+end)
+
+Gui.on_click("^close_comparison$", function(event)
+    local player = game.players[event.player_index]
+    if player.gui.screen.comparison_frame then
+        player.gui.screen.comparison_frame.destroy()
+    end
+end)
+
+Gui.on_click("^show_achievements$", function(event)
+    local player = game.players[event.player_index]
+    gui.show_achievements(player, rankings, utils)
+end)
+
+Gui.on_click("^close_achievements$", function(event)
+    local player = game.players[event.player_index]
+    if player.gui.screen.achievements_frame then
+        player.gui.screen.achievements_frame.destroy()
+    end
+end)
+
+Gui.on_click("^show_rankings$", function(event)
+    local player = game.players[event.player_index]
+    gui.show_rankings(player, rankings)
+end)
+
+Gui.on_click("^close_rankings$", function(event)
+    local player = game.players[event.player_index]
+    if player.gui.screen.rankings_frame then
+        player.gui.screen.rankings_frame.destroy()
+    end
+end)
+
+Gui.on_click("^close_planet_stats$", function(event)
+    local player = game.players[event.player_index]
+    if player.gui.screen.planet_stats_frame then
+        if storage.planet_stats_state and storage.planet_stats_state[event.player_index] then
+            storage.planet_stats_state[event.player_index].gui_position = player.gui.screen.planet_stats_frame.location
         end
-        
-    elseif element.name == "show_rankings" then
-        gui.show_rankings(player, rankings)
-        
-    elseif element.name == "close_rankings" then
-        if player.gui.screen.rankings_frame then
-            player.gui.screen.rankings_frame.destroy()
+        player.gui.screen.planet_stats_frame.destroy()
+        if planet_stats then
+            planet_stats.stop_async_collection(event.player_index)
         end
-        
-    elseif element.name == "close_planet_stats" then
-        if player.gui.screen.planet_stats_frame then
-            -- Save position before closing
-            if storage.planet_stats_state and storage.planet_stats_state[event.player_index] then
-                storage.planet_stats_state[event.player_index].gui_position = player.gui.screen.planet_stats_frame.location
-            end
-            player.gui.screen.planet_stats_frame.destroy()
-            if planet_stats then
-                planet_stats.stop_async_collection(event.player_index)
-            end
-            if storage.planet_stats_state[event.player_index] then
-                storage.planet_stats_state[event.player_index].auto_show = false
-            end
+        if storage.planet_stats_state and storage.planet_stats_state[event.player_index] then
+            storage.planet_stats_state[event.player_index].auto_show = false
         end
-        
-    elseif string.match(element.name, "^show_player_details_") then
-        local target_index = tonumber(string.match(element.name, "(%d+)$"))
-        if target_index then
-            gui_main.show_crafting_details(player, target_index, utils, rankings, stats_module)
-        end
-        
-    elseif string.match(element.name, "^show_crafting_history_") then
-        local target_index = tonumber(string.match(element.name, "(%d+)$"))
-        if target_index then
-            gui_main.show_crafting_history(player, target_index, utils)
-        end
-        
-    elseif string.match(element.name, "^compare_with_") then
-        local target_index = tonumber(string.match(element.name, "(%d+)$"))
-        if target_index then
-            gui.show_player_comparison(player, target_index, utils, rankings)
-        end
-        
-    elseif string.match(element.name, "^show_charts_") then
-        local target_index = tonumber(string.match(element.name, "(%d+)$"))
-        if target_index then
-            gui.show_statistics_charts(player, target_index, utils, rankings, stats_module)
-        end
-        
-    elseif element.name == "close_stats_charts" then
-        if player.gui.screen.stats_charts_frame then
-            player.gui.screen.stats_charts_frame.destroy()
-        end
-        -- Clean up dashboard data
-        if storage.dashboard_data and storage.dashboard_data[player.index] then
-            storage.dashboard_data[player.index] = nil
-        end
-        
-    -- Planet statistics GUI handlers
-    elseif PLANET_STATS_ENABLED and element.name == "close_planet_stats" then
-        if player.gui.screen.planet_stats_frame then
-            player.gui.screen.planet_stats_frame.destroy()
-        end
-        if storage.planet_stats_state and storage.planet_stats_state[player.index] then
-            storage.planet_stats_state[player.index].auto_show = false
-        end
-        
-    elseif PLANET_STATS_ENABLED and string.match(element.name, "^ping_entity_") then
-        local entity_index = tonumber(string.match(element.name, "(%d+)$"))
+    end
+end)
+
+Gui.on_click("^close_stats_charts$", function(event)
+    local player = game.players[event.player_index]
+    if player.gui.screen.stats_charts_frame then
+        player.gui.screen.stats_charts_frame.destroy()
+    end
+    if storage.dashboard_data and storage.dashboard_data[player.index] then
+        storage.dashboard_data[player.index] = nil
+    end
+end)
+
+-- Pattern-matched handlers: event.match contains the captured group
+Gui.on_click("^show_player_details_(%d+)$", function(event)
+    local player = game.players[event.player_index]
+    local target_index = tonumber(event.match)
+    if target_index then
+        gui_main.show_crafting_details(player, target_index, utils, rankings, stats_module)
+    end
+end)
+
+Gui.on_click("^show_crafting_history_(%d+)$", function(event)
+    local player = game.players[event.player_index]
+    local target_index = tonumber(event.match)
+    if target_index then
+        gui_main.show_crafting_history(player, target_index, utils)
+    end
+end)
+
+Gui.on_click("^compare_with_(%d+)$", function(event)
+    local player = game.players[event.player_index]
+    local target_index = tonumber(event.match)
+    if target_index then
+        gui.show_player_comparison(player, target_index, utils, rankings)
+    end
+end)
+
+Gui.on_click("^show_charts_(%d+)$", function(event)
+    local player = game.players[event.player_index]
+    local target_index = tonumber(event.match)
+    if target_index then
+        gui.show_statistics_charts(player, target_index, utils, rankings, stats_module)
+    end
+end)
+
+-- Planet statistics: ping entity handler
+if PLANET_STATS_ENABLED then
+    Gui.on_click("^ping_entity_(%d+)$", function(event)
+        local player = game.players[event.player_index]
+        local entity_index = tonumber(event.match)
         if entity_index then
-            -- Get current surface stats to find the entity
             local surface_stats = planet_stats.collect_surface_stats(player.surface)
             if surface_stats and surface_stats.entity_shortages[entity_index] then
                 local shortage = surface_stats.entity_shortages[entity_index]
-                
-                -- Create ping at entity position
+
                 player.create_local_flying_text{
                     text = {"gui.entity-pinged", shortage.name},
                     position = shortage.position,
                     time_to_live = 180
                 }
-                
-                -- Center camera on entity
+
                 player.zoom_to_world(shortage.position, 1)
-                
-                -- Create map ping for multiplayer
+
                 if game.players and #game.players > 1 then
                     for _, other_player in pairs(game.players) do
                         if other_player ~= player and other_player.surface == player.surface then
@@ -580,8 +600,8 @@ script.on_event(defines.events.on_gui_click, function(event)
                 end
             end
         end
-    end
-end)
+    end)
+end
 
 -- Commands
 commands.add_command("mps-stats", {"command.stats-help"}, function(command)

@@ -3,6 +3,8 @@
 
 local utils = {}
 local charts = require("__factorio-charts__.charts")
+local Table = require("__stdlib2__/stdlib/utils/table")
+local String = require("__stdlib2__/stdlib/utils/string")
 
 -- Format playtime from ticks to readable string
 function utils.format_playtime(ticks)
@@ -98,12 +100,11 @@ function utils.cleanup_player_on_leave(player_index)
         storage.dashboard_data[player_index] = nil
     end
     
-    -- MEMORY LEAK FIX: Clean up chart history for disconnected players
-    if storage.chart_history and storage.chart_history[player_index] then
-        storage.chart_history[player_index] = nil
-    end
-    
-    -- MEMORY LEAK FIX: Clean up professional charts resources
+    -- NOTE: chart_history and player_timeseries are preserved across disconnects
+    -- so players see their historical data when they reconnect
+
+    -- Clean up transient render resources (chunks, line objects)
+    -- The timeseries DATA is kept, only render state is cleared
     if storage.player_timeseries and storage.player_timeseries[player_index] then
         local ts = storage.player_timeseries[player_index]
         for _, interval in ipairs(ts) do
@@ -112,13 +113,30 @@ function utils.cleanup_player_on_leave(player_index)
                 for _, obj in ipairs(interval.line_ids) do
                     if obj.valid then obj.destroy() end
                 end
+                interval.line_ids = {}
             end
-            -- Free chunk back to pool
+            -- Free main chunk back to pool
             if interval.chunk then
                 charts.free_chunk(storage.charts_surface, interval.chunk)
+                interval.chunk = nil
             end
+            -- Free per-series chunks and line_ids (used by split charts)
+            for _, series_name in ipairs({"distance", "score", "crafted", "combat", "playtime"}) do
+                local chunk_key = "chunk_" .. series_name
+                if interval[chunk_key] then
+                    charts.free_chunk(storage.charts_surface, interval[chunk_key])
+                    interval[chunk_key] = nil
+                end
+                local line_ids_key = "line_ids_" .. series_name
+                if interval[line_ids_key] then
+                    for _, obj in ipairs(interval[line_ids_key]) do
+                        if obj.valid then obj.destroy() end
+                    end
+                    interval[line_ids_key] = nil
+                end
+            end
+            interval.last_rendered_tick = nil
         end
-        storage.player_timeseries[player_index] = nil
     end
 end
 
@@ -159,7 +177,7 @@ function utils.create_planets_flow(parent, planets_visited)
     local sorted_planets = {}
     for planet_name, visit_tick in pairs(planets_visited) do
         -- Исключаем платформы (имя начинается с 'platform')
-        if not string.match(planet_name, "^platform") then
+        if not String.starts_with(planet_name, "platform") then
             table.insert(sorted_planets, {name = planet_name, tick = visit_tick})
         end
     end
@@ -189,11 +207,8 @@ function utils.periodic_cleanup()
         else
             -- Limit crafted items to prevent memory bloat
             if player_data.crafted_items and next(player_data.crafted_items) then
-                local item_count = 0
-                for _ in pairs(player_data.crafted_items) do
-                    item_count = item_count + 1
-                end
-                
+                local item_count = Table.count_keys(player_data.crafted_items)
+
                 if item_count > 1000 then
                     local sorted_items = {}
                     for item_name, count in pairs(player_data.crafted_items) do
@@ -244,9 +259,9 @@ function utils.init_player_timeseries(player_index)
         -- Note: ticks parameter is used for TTL calculation and display labels
         -- Data is added every time add_datapoint is called (every UPDATE_FREQUENCY = 1800 ticks)
         local defs = {
-            {name = "30s", ticks = 1800, steps = 10, length = 120}, -- 60 minutes (120 points * 30s)
-            {name = "5m",  ticks = 18000, steps = 12, length = 144}, -- 12 hours (144 points * 5m)
-            {name = "1h",  ticks = 216000, steps = nil, length = 168} -- 7 days (168 points * 1h)
+            {name = "30s", ticks = 1800, steps = 10, length = 200}, -- ~100 minutes (200 points * 30s)
+            {name = "5m",  ticks = 18000, steps = 12, length = 200}, -- ~16.7 hours (200 points * 5m)
+            {name = "1h",  ticks = 216000, steps = nil, length = 200} -- ~8.3 days (200 points * 1h)
         }
         storage.player_timeseries[player_index] = charts.create_time_series(defs)
     end
@@ -266,6 +281,11 @@ function utils.restore_all_timeseries_chunks()
                 interval.chunk = nil
                 interval.line_ids = {}
                 interval.last_rendered_tick = nil
+                -- Clear per-series chunks and line_ids (used by split charts)
+                for _, series_name in ipairs({"distance", "score", "crafted", "combat", "playtime"}) do
+                    interval["chunk_" .. series_name] = nil
+                    interval["line_ids_" .. series_name] = nil
+                end
             end
         end
     end

@@ -694,7 +694,7 @@ function planet_stats.create_planet_stats_gui(player, surface_stats)
         horizontal_scroll_policy = "never",
         vertical_scroll_policy = "auto"
     }
-    scroll_pane.style.maximal_height = 750 -- Ограничиваем высоту для маленьких экранов
+    scroll_pane.style.vertically_stretchable = true
     scroll_pane.style.horizontally_stretchable = true
     
     local columns = scroll_pane.add{
@@ -1111,17 +1111,28 @@ function planet_stats.update_planet_stats_content(player, surface_stats)
     
     -- Очищаем содержимое
     content.clear()
-    
+
     -- Прогресс виден в заголовке, info_section больше не нужна для асинхронного режима
-    
+
+    -- Scroll pane for content
+    local scroll_pane = content.add{
+        type = "scroll-pane",
+        name = "planet_stats_scroll",
+        direction = "vertical",
+        horizontal_scroll_policy = "never",
+        vertical_scroll_policy = "auto"
+    }
+    scroll_pane.style.vertically_stretchable = true
+    scroll_pane.style.horizontally_stretchable = true
+
     -- Двухколоночный layout
-    local columns = content.add{
+    local columns = scroll_pane.add{
         type = "flow",
         name = "planet_stats_columns",
         direction = "horizontal"
     }
     columns.style.horizontal_spacing = 8
-    
+
     local left_column = columns.add{
         type = "flow",
         name = "left_column",
@@ -1129,7 +1140,7 @@ function planet_stats.update_planet_stats_content(player, surface_stats)
     }
     left_column.style.width = 360
     left_column.style.vertical_spacing = 4
-    
+
     local right_column = columns.add{
         type = "flow",
         name = "right_column",
@@ -1137,7 +1148,7 @@ function planet_stats.update_planet_stats_content(player, surface_stats)
     }
     right_column.style.width = 360
     right_column.style.vertical_spacing = 4
-    
+
     planet_stats.add_production_section(left_column, surface_stats)
     planet_stats.add_power_section(right_column, surface_stats)
     planet_stats.add_debug_power_section(right_column, surface_stats)

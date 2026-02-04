@@ -2,6 +2,7 @@
 -- Система рангов и достижений
 
 local rankings = {}
+local String = require("__stdlib2__/stdlib/utils/string")
 
 -- Achievement definitions (перенесено из control.lua)
 rankings.ACHIEVEMENTS = {
@@ -142,7 +143,7 @@ function rankings.calculate_player_rank(stats, player_index)
         local planet_count = 0
         for planet_name, _ in pairs(stats.planets_visited) do
             -- Исключаем платформы (имя начинается с 'platform')
-            if not string.match(planet_name, "^platform") then
+            if not String.starts_with(planet_name, "platform") then
                 planet_count = planet_count + 1
             end
         end
@@ -212,7 +213,7 @@ function rankings.check_achievements(player_index, utils)
                 if stats.planets_visited then
                     for planet_name, _ in pairs(stats.planets_visited) do
                         -- Исключаем платформы (имя начинается с 'platform')
-                        if not string.match(planet_name, "^platform") then
+                        if not String.starts_with(planet_name, "platform") then
                             planet_count = planet_count + 1
                         end
                     end

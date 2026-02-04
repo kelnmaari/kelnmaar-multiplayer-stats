@@ -3,6 +3,8 @@
 
 local gui = {}
 local charts = require("__factorio-charts__.charts")
+local Table = require("__stdlib2__/stdlib/utils/table")
+local String = require("__stdlib2__/stdlib/utils/string")
 
 
 -- Render a professional line chart using factorio-charts
@@ -157,6 +159,135 @@ function gui.render_professional_chart(parent, timeseries, series_to_show, title
         end
     end
     
+    return chart_frame
+end
+
+-- Render a single-series chart (one data series per chart, with its own chunk and scale)
+-- Uses charts.render_line_graph() directly instead of render_time_series() to avoid
+-- the same-tick cache and shared line_ids/ordered_sums that prevent multiple renders per tick.
+function gui.render_single_series_chart(parent, timeseries, series_name, title, color, height)
+    local chart_frame = parent.add{
+        type = "frame",
+        direction = "vertical",
+        style = "inside_deep_frame"
+    }
+    chart_frame.style.horizontally_stretchable = true
+    chart_frame.style.padding = 4
+
+    -- Compact title with series color
+    if title then
+        local title_label = chart_frame.add{
+            type = "label",
+            caption = title,
+            style = "caption_label"
+        }
+        title_label.style.font_color = color or {r=1, g=1, b=1}
+        title_label.style.font = "default-bold"
+        title_label.style.bottom_margin = 2
+    end
+
+    local interval_index = 1
+    local interval = timeseries[interval_index]
+
+    -- Ensure chart surface exists
+    if not storage.charts_surface then
+        storage.charts_surface = charts.create_surface("kelnmaar-stats-charts")
+    end
+
+    -- Allocate a per-series chunk (separate render area for each series)
+    local chunk_key = "chunk_" .. series_name
+    if not interval[chunk_key] then
+        interval[chunk_key] = charts.allocate_chunk(storage.charts_surface)
+    end
+
+    local my_chunk = interval[chunk_key]
+
+    -- Destroy old render objects for this per-series chunk
+    local line_ids_key = "line_ids_" .. series_name
+    if interval[line_ids_key] then
+        for _, render_obj in ipairs(interval[line_ids_key]) do
+            if render_obj.valid then
+                render_obj.destroy()
+            end
+        end
+    end
+    interval[line_ids_key] = {}
+
+    local viewport_width = 600
+    local viewport_height = 300
+
+    -- Calculate TTL based on interval's tick rate (at least 6 seconds)
+    local ttl = math.max(interval.ticks * 2, 360)
+
+    -- Render directly via line_graph API, bypassing time_series cache
+    -- NOTE: factorio-charts filters with `selected[name] ~= false`, so we must
+    -- explicitly set false for all series we want to hide (nil = show)
+    local all_series_names = {"distance", "score", "crafted", "combat", "playtime"}
+    local selected = {}
+    for _, name in ipairs(all_series_names) do
+        selected[name] = (name == series_name)
+    end
+    local ordered_sums, line_ids = charts.render_line_graph(
+        storage.charts_surface.surface,
+        my_chunk,
+        {
+            data = interval.data,
+            index = interval.index,
+            length = interval.length,
+            counts = interval.counts,
+            sum = interval.sum,
+            y_range = nil,  -- Auto-scale per series
+            label_format = "time",
+            selected_series = selected,
+            ttl = ttl,
+            viewport_width = viewport_width,
+            viewport_height = viewport_height,
+        }
+    )
+
+    -- Store line_ids per-series so cleanup works correctly
+    if line_ids then
+        interval[line_ids_key] = line_ids
+    end
+
+    -- Add camera widget
+    local widget_width = 380
+    local widget_height = height or 200
+
+    local camera_params = charts.get_camera_params(my_chunk, {
+        viewport_width = viewport_width,
+        viewport_height = viewport_height,
+        widget_width = widget_width,
+        widget_height = widget_height,
+        fit_mode = "fit"
+    })
+
+    local camera = chart_frame.add{
+        type = "camera",
+        position = camera_params.position,
+        surface_index = storage.charts_surface.surface.index,
+        zoom = camera_params.zoom
+    }
+    camera.style.minimal_width = widget_width
+    camera.style.height = widget_height
+    camera.style.horizontally_stretchable = true
+
+    -- Show current value from latest data point if available
+    if ordered_sums then
+        for _, entry in ipairs(ordered_sums) do
+            if entry.name == series_name then
+                local value_label = chart_frame.add{
+                    type = "label",
+                    caption = string.format("Current: %.1f", entry.sum or 0),
+                    style = "caption_label"
+                }
+                value_label.style.font_color = color or {r=1, g=1, b=1}
+                value_label.style.top_margin = 2
+                break
+            end
+        end
+    end
+
     return chart_frame
 end
 
@@ -496,11 +627,36 @@ function gui.create_dashboard_content(content, target_player_index, utils, ranki
             style = "caption_label"
         }
     else
-        -- Main charts grid
         local ts = storage.player_timeseries and storage.player_timeseries[target_player_index]
         if ts then
-            -- Main large chart with title inside the frame
-            gui.render_professional_chart(content, ts, nil, "Overview & Access Statistics", 450)
+            -- 5 separate charts in a 2-column grid
+            local charts_grid = content.add{
+                type = "table",
+                column_count = 2
+            }
+            charts_grid.style.horizontal_spacing = 8
+            charts_grid.style.vertical_spacing = 8
+
+            local series_list = {
+                {name = "distance", title = "Distance Traveled",  color = {r=0.0, g=0.5, b=1.0}},
+                {name = "score",    title = "Rank Score",         color = {r=1.0, g=0.8, b=0.0}},
+                {name = "crafted",  title = "Items Crafted",      color = {r=0.2, g=0.8, b=0.2}},
+                {name = "combat",   title = "Enemies Killed",     color = {r=1.0, g=0.3, b=0.3}},
+            }
+
+            -- First 4 charts in 2x2 grid
+            for _, config in ipairs(series_list) do
+                gui.render_single_series_chart(
+                    charts_grid, ts, config.name,
+                    config.title, config.color, 180
+                )
+            end
+
+            -- 5th chart (playtime) spans full width below the grid
+            gui.render_single_series_chart(
+                content, ts, "playtime",
+                "Playtime (Hours)", {r=0.6, g=0.2, b=0.8}, 200
+            )
         else
             content.add{
                 type = "label",
@@ -650,13 +806,6 @@ function gui.show_rankings(requesting_player, rankings)
     }
 end
 
--- Helper function to count table elements
-local function table_size(t)
-    local count = 0
-    for _ in pairs(t) do count = count + 1 end
-    return count
-end
-
 -- Show achievements window
 function gui.show_achievements(requesting_player, rankings, utils)
     if requesting_player.gui.screen.achievements_frame then
@@ -688,7 +837,7 @@ function gui.show_achievements(requesting_player, rankings, utils)
     -- Debug info
     content.add{
         type = "label",
-        caption = {"gui.debug-achievements-found", tostring(table_size(player_achievements))},
+        caption = {"gui.debug-achievements-found", tostring(Table.count_keys(player_achievements))},
         style = "caption_label"
     }
     
@@ -765,7 +914,7 @@ function gui.show_achievements(requesting_player, rankings, utils)
                 if stats.planets_visited then
                     for planet_name, _ in pairs(stats.planets_visited) do
                         -- Исключаем платформы (имя начинается с 'platform')
-                        if not string.match(planet_name, "^platform") then
+                        if not String.starts_with(planet_name, "platform") then
                             current_value = current_value + 1
                         end
                     end

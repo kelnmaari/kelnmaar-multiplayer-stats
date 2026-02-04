@@ -3,6 +3,8 @@
 
 local stats = {}
 local charts = require("__factorio-charts__.charts")
+local Table = require("__stdlib2__/stdlib/utils/table")
+local String = require("__stdlib2__/stdlib/utils/string")
 
 -- Damage buffer for batching on_entity_damaged events (performance optimization)
 local damage_buffer = {}
@@ -32,8 +34,9 @@ function stats.update_player_distance(player_index)
         stats_data.distance_traveled = stats_data.distance_traveled + distance
         
         -- Separate space travel tracking
-        if string.find(player.surface.name:lower(), "space") or 
-           string.find(player.surface.name:lower(), "platform") then
+        local surface_lower = player.surface.name:lower()
+        if String.contains(surface_lower, "space") or
+           String.contains(surface_lower, "platform") then
             stats_data.space_travel_distance = (stats_data.space_travel_distance or 0) + distance
         end
     end
@@ -67,9 +70,9 @@ function stats.update_player_status(player)
     
     -- Track deep space exploration (space platforms, asteroid fields, etc.)
     if not stats_data.deep_space_visited then
-        if string.find(surface_name, "platform") or 
-           string.find(surface_name, "asteroid") or
-           string.find(surface_name, "space") or
+        if String.contains(surface_name, "platform") or
+           String.contains(surface_name, "asteroid") or
+           String.contains(surface_name, "space") or
            surface_name == "shattered-planet" or
            surface_name == "space-location" then
             stats_data.deep_space_visited = true
@@ -185,7 +188,7 @@ function stats.update_chart_history(player_index, rankings, utils)
             table.insert(history[category], value)
             
             -- Limit history length to prevent memory bloat
-            while #history[category] > 30 do  -- Increased from 20 to 30 for better visualization
+            while #history[category] > 150 do  -- Keep more history for persistent chart data
                 table.remove(history[category], 1)
             end
         end
@@ -230,12 +233,8 @@ function stats.on_player_crafted_item(event)
     
     -- OPTIMIZATION: Incremental cleanup every 100 crafts
     if stats_data.total_crafted % 100 == 0 then
-        local item_count = 0
-        for _ in pairs(stats_data.crafted_items) do
-            item_count = item_count + 1
-            if item_count > 1000 then break end
-        end
-        
+        local item_count = Table.count_keys(stats_data.crafted_items)
+
         -- If too many unique items, clean up to top 500
         if item_count > 1000 then
             local sorted_items = {}
