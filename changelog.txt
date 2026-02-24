@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 6.4.2
+Date: 25. 02. 2026
+  Features:
+    - Idle mining drills are now displayed in the Mining Resources section, showing mining potential per ore type
+    - Active drills shown normally, idle drills highlighted in red (+N / +speed) next to active counts
+    - Drills without a target resource grouped separately at the bottom of the list
+
+---------------------------------------------------------------------------------------------------
 Version: 6.4.1
 Date: 25. 02. 2026
   Bugfixes:

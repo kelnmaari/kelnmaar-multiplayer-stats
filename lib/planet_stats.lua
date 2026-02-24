@@ -438,22 +438,13 @@ function planet_stats.collect_mining_resource_stats(entity, stats)
     if not entity.valid or entity.type ~= "mining-drill" then return end
 
     -- Определяем какой ресурс добывает бур
-    local resource_name = "idle"
+    local resource_name = nil
     local success, target = pcall(function() return entity.mining_target end)
     if success and target and target.valid and target.name then
         resource_name = target.name
     end
 
-    -- Считаем только работающие буры
-    local is_working = entity.status == defines.entity_status.working
-    if not is_working then return end
-
-    if not stats.mining_resources[resource_name] then
-        stats.mining_resources[resource_name] = { count = 0, total_speed = 0 }
-    end
-    stats.mining_resources[resource_name].count = stats.mining_resources[resource_name].count + 1
-
-    -- Расчёт эффективной скорости добычи (base_speed * module_effects)
+    -- Расчёт базовой скорости добычи
     local base_speed = 1
     local s, speed = pcall(function() return entity.prototype.mining_speed end)
     if s and speed then base_speed = speed end
@@ -465,8 +456,30 @@ function planet_stats.collect_mining_resource_stats(entity, stats)
         end
     end
 
-    stats.mining_resources[resource_name].total_speed =
-        stats.mining_resources[resource_name].total_speed + effective_speed
+    local is_working = entity.status == defines.entity_status.working
+
+    if resource_name then
+        if not stats.mining_resources[resource_name] then
+            stats.mining_resources[resource_name] = { count = 0, total_speed = 0, idle_count = 0, idle_speed = 0 }
+        end
+        if is_working then
+            stats.mining_resources[resource_name].count = stats.mining_resources[resource_name].count + 1
+            stats.mining_resources[resource_name].total_speed =
+                stats.mining_resources[resource_name].total_speed + effective_speed
+        else
+            stats.mining_resources[resource_name].idle_count = stats.mining_resources[resource_name].idle_count + 1
+            stats.mining_resources[resource_name].idle_speed =
+                stats.mining_resources[resource_name].idle_speed + effective_speed
+        end
+    else
+        -- Бур без целевого ресурса (полностью idle)
+        if not stats.mining_resources["__idle__"] then
+            stats.mining_resources["__idle__"] = { count = 0, total_speed = 0, idle_count = 0, idle_speed = 0 }
+        end
+        stats.mining_resources["__idle__"].idle_count = stats.mining_resources["__idle__"].idle_count + 1
+        stats.mining_resources["__idle__"].idle_speed =
+            stats.mining_resources["__idle__"].idle_speed + effective_speed
+    end
 end
 
 -- Собрать статистику электроэнергии
@@ -916,26 +929,38 @@ function planet_stats.add_mining_resources_section(parent, stats)
         local h1 = mining_table.add{type = "label", caption = "", style = "bold_label"}
         h1.style.minimal_width = 28  -- колонка иконки
         local h2 = mining_table.add{type = "label", caption = {"gui.resource-name"}, style = "bold_label"}
-        h2.style.minimal_width = 140
+        h2.style.minimal_width = 110
         local h3 = mining_table.add{type = "label", caption = {"gui.drill-count"}, style = "bold_label"}
-        h3.style.minimal_width = 50
+        h3.style.minimal_width = 70
         local h4 = mining_table.add{type = "label", caption = {"gui.mining-speed"}, style = "bold_label"}
-        h4.style.minimal_width = 70
+        h4.style.minimal_width = 90
 
-        -- Сортируем по количеству буров
+        -- Сортируем по общему количеству буров (active + idle), __idle__ в конец
         local sorted_resources = {}
         for resource, data in pairs(stats.mining_resources) do
-            table.insert(sorted_resources, {resource = resource, data = data})
+            local total = (data.count or 0) + (data.idle_count or 0)
+            if total > 0 then
+                table.insert(sorted_resources, {resource = resource, data = data, total = total})
+            end
         end
-        table.sort(sorted_resources, function(a, b) return a.data.count > b.data.count end)
+        table.sort(sorted_resources, function(a, b)
+            -- __idle__ (буры без цели) всегда в конце
+            if a.resource == "__idle__" then return false end
+            if b.resource == "__idle__" then return true end
+            return a.total > b.total
+        end)
 
         -- Отображаем все ресурсы (руд обычно < 20)
         for _, item in ipairs(sorted_resources) do
             local resource_name = item.resource
+            local active = item.data.count or 0
+            local idle = item.data.idle_count or 0
+            local active_speed = item.data.total_speed or 0
+            local idle_speed = item.data.idle_speed or 0
 
             -- Иконка ресурса
             local sprite_added = false
-            if resource_name ~= "idle" then
+            if resource_name ~= "__idle__" then
                 -- Пробуем entity/ спрайт (ресурсы - это entity), затем item/
                 local sprite_path = "entity/" .. resource_name
                 local valid = pcall(function()
@@ -963,12 +988,12 @@ function planet_stats.add_mining_resources_section(parent, stats)
                 end
             end
             if not sprite_added then
-                mining_table.add{type = "label", caption = resource_name == "idle" and "⏸" or "⛏"}
+                mining_table.add{type = "label", caption = resource_name == "__idle__" and "⏸" or "⛏"}
             end
 
             -- Имя ресурса (локализованное если доступно)
             local display_name = resource_name
-            if resource_name ~= "idle" then
+            if resource_name ~= "__idle__" then
                 local proto_success, proto = pcall(function()
                     return prototypes.entity[resource_name]
                 end)
@@ -983,14 +1008,30 @@ function planet_stats.add_mining_resources_section(parent, stats)
             name_lbl.style.maximal_width = 150
             name_lbl.style.single_line = false
 
-            -- Количество буров
-            mining_table.add{type = "label", caption = tostring(item.data.count)}
+            -- Количество буров: "active (+idle)" если есть простаивающие
+            if idle > 0 then
+                local drill_lbl = mining_table.add{
+                    type = "label",
+                    caption = string.format("%d [color=red]+%d[/color]", active, idle)
+                }
+                -- rich text [color=] is enabled by default in Factorio 2.0 labels
+            else
+                mining_table.add{type = "label", caption = tostring(active)}
+            end
 
-            -- Скорость добычи
-            mining_table.add{
-                type = "label",
-                caption = string.format("%.1f/s", item.data.total_speed)
-            }
+            -- Скорость добычи: "active_speed (+idle_speed)" если есть простаивающие
+            if idle > 0 then
+                local speed_lbl = mining_table.add{
+                    type = "label",
+                    caption = string.format("%.1f/s [color=red]+%.1f[/color]", active_speed, idle_speed)
+                }
+                -- rich text [color=] is enabled by default in Factorio 2.0 labels
+            else
+                mining_table.add{
+                    type = "label",
+                    caption = string.format("%.1f/s", active_speed)
+                }
+            end
         end
     else
         mining_frame.add{
