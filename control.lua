@@ -313,6 +313,15 @@ script.on_configuration_changed(function()
 
     -- Restore chunks for all timeseries after configuration change
     utils.restore_all_timeseries_chunks()
+
+    -- Migration: ensure mining_resources exists in any in-progress planet stats processing
+    if storage.planet_stats_processing then
+        for _, state in pairs(storage.planet_stats_processing) do
+            if state.stats and not state.stats.mining_resources then
+                state.stats.mining_resources = {}
+            end
+        end
+    end
 end)
 
 script.on_event(defines.events.on_player_joined_game, function(event)

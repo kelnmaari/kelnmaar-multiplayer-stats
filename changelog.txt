@@ -1,4 +1,19 @@
 ---------------------------------------------------------------------------------------------------
+Version: 6.4.0
+Date: 24. 02. 2026
+  Features:
+    - Added Mining Resources section to Planet Statistics with per-ore breakdown
+    - Displays drill count and effective mining speed for each resource type
+    - Supports all vanilla and modded ores (Bob's Mods, Angel's, etc.) via entity.mining_target API
+    - New 4th column in Planet Stats window with sorted resource table and entity icons
+  UI Improvements:
+    - Planet Stats window widened to accommodate Mining Resources column (1860px)
+  Technical:
+    - Save migration ensures compatibility with existing saves
+  Translation:
+    - Added Mining Resources localization for all 8 languages
+
+---------------------------------------------------------------------------------------------------
 Version: 6.3.1
 Date: 24. 02. 2026
   Compatibility:

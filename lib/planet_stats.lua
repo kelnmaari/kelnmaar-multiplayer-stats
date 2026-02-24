@@ -99,7 +99,8 @@ function planet_stats.start_async_collection(player)
                 producers = {},
                 consumers = {}
             },
-            network_power = nil  -- Будет заполнено из electric_network_statistics
+            network_power = nil,  -- Будет заполнено из electric_network_statistics
+            mining_resources = {}  -- { [resource_name] = { count = N, total_speed = X } }
         }
     }
     
@@ -123,6 +124,7 @@ function planet_stats.process_batch(player_index)
         if item and item.entity and item.entity.valid then
             if item.category == "production" then
                 planet_stats.collect_production_stats(item.entity, state.stats)
+                planet_stats.collect_mining_resource_stats(item.entity, state.stats)
                 planet_stats.collect_power_stats(item.entity, state.stats)
                 planet_stats.check_entity_shortages(item.entity, state.stats)
             else
@@ -255,7 +257,8 @@ function planet_stats.collect_surface_stats(surface)
         power_producers = 0,
         power_consumers = 0,
         debug_power_info = {},
-        network_power = nil
+        network_power = nil,
+        mining_resources = {}
     }
     
     -- Типы объектов
@@ -302,6 +305,7 @@ function planet_stats.collect_surface_stats(surface)
         if item.entity and item.entity.valid then
             if item.category == "production" then
                 planet_stats.collect_production_stats(item.entity, stats)
+                planet_stats.collect_mining_resource_stats(item.entity, stats)
                 planet_stats.collect_power_stats(item.entity, stats)
                 planet_stats.check_entity_shortages(item.entity, stats)
             else
@@ -425,6 +429,44 @@ function planet_stats.collect_production_stats(entity, stats)
         stats.production[recipe_name].productivity = 
             stats.production[recipe_name].productivity + productivity
     end
+end
+
+-- Собрать статистику добычи ресурсов по типам руды
+-- Использует entity.mining_target для определения типа добываемого ресурса
+-- Поддерживает модовые руды (Bob's Ores, Angel's и т.д.)
+function planet_stats.collect_mining_resource_stats(entity, stats)
+    if not entity.valid or entity.type ~= "mining-drill" then return end
+
+    -- Определяем какой ресурс добывает бур
+    local resource_name = "idle"
+    local success, target = pcall(function() return entity.mining_target end)
+    if success and target and target.valid and target.name then
+        resource_name = target.name
+    end
+
+    -- Считаем только работающие буры
+    local is_working = entity.status == defines.entity_status.working
+    if not is_working then return end
+
+    if not stats.mining_resources[resource_name] then
+        stats.mining_resources[resource_name] = { count = 0, total_speed = 0 }
+    end
+    stats.mining_resources[resource_name].count = stats.mining_resources[resource_name].count + 1
+
+    -- Расчёт эффективной скорости добычи (base_speed * module_effects)
+    local base_speed = 1
+    local s, speed = pcall(function() return entity.prototype.mining_speed end)
+    if s and speed then base_speed = speed end
+
+    local effective_speed = base_speed
+    if entity.effects and type(entity.effects) == "table" then
+        if entity.effects.speed and type(entity.effects.speed) == "number" then
+            effective_speed = effective_speed * entity.effects.speed
+        end
+    end
+
+    stats.mining_resources[resource_name].total_speed =
+        stats.mining_resources[resource_name].total_speed + effective_speed
 end
 
 -- Собрать статистику электроэнергии
@@ -642,7 +684,7 @@ function planet_stats.create_planet_stats_gui(player, surface_stats)
             surface_stats.total_entities or 0
         }
     }
-    frame.style.width = 1480  -- Три колонки (широкая третья для графиков)
+    frame.style.width = 1860  -- Четыре колонки (включая колонку добычи ресурсов)
     frame.style.height = 700
     
     -- Восстанавливаем сохраненную позицию из storage или ставим по центру
@@ -654,7 +696,7 @@ function planet_stats.create_planet_stats_gui(player, surface_stats)
         local scale = player.display_scale
         local res = player.display_resolution
         frame.location = {
-            (res.width / scale - 1480) / 2,
+            (res.width / scale - 1860) / 2,
             (res.height / scale - 700) / 2
         }
     end
@@ -732,6 +774,15 @@ function planet_stats.create_planet_stats_gui(player, surface_stats)
     chart_column.style.width = 720
     chart_column.style.vertical_spacing = 4
 
+    -- Четвёртая колонка - добыча ресурсов
+    local mining_column = columns.add{
+        type = "flow",
+        name = "mining_column",
+        direction = "vertical"
+    }
+    mining_column.style.width = 360
+    mining_column.style.vertical_spacing = 4
+
     -- Добавляем секции в колонки
     planet_stats.add_production_section(left_column, surface_stats)
 
@@ -746,6 +797,9 @@ function planet_stats.create_planet_stats_gui(player, surface_stats)
     -- Графики энергии в третьей колонке
     planet_stats.add_energy_chart(chart_column, surface_stats.surface_name, "production", {"gui.energy-production-chart"})
     planet_stats.add_energy_chart(chart_column, surface_stats.surface_name, "consumption", {"gui.energy-consumption-chart"})
+
+    -- Добыча ресурсов в четвёртой колонке
+    planet_stats.add_mining_resources_section(mining_column, surface_stats)
 
     return frame
 end
@@ -831,6 +885,117 @@ function planet_stats.add_production_section(parent, stats)
         production_frame.add{
             type = "label",
             caption = {"gui.no-production"}
+        }
+    end
+end
+
+-- Добавить секцию добычи ресурсов (руды)
+function planet_stats.add_mining_resources_section(parent, stats)
+    local mining_frame = parent.add{
+        type = "frame",
+        direction = "vertical",
+        style = "kelnmaar_info_frame"
+    }
+
+    mining_frame.add{
+        type = "label",
+        caption = {"gui.mining-resources"},
+        style = "kelnmaar_chart_title"
+    }
+
+    if stats.mining_resources and next(stats.mining_resources) then
+        local mining_table = mining_frame.add{
+            type = "table",
+            column_count = 4
+        }
+        mining_table.style.horizontally_stretchable = true
+        mining_table.style.width = 345
+        mining_table.style.horizontal_spacing = 8
+
+        -- Заголовки
+        local h1 = mining_table.add{type = "label", caption = "", style = "bold_label"}
+        h1.style.minimal_width = 28  -- колонка иконки
+        local h2 = mining_table.add{type = "label", caption = {"gui.resource-name"}, style = "bold_label"}
+        h2.style.minimal_width = 140
+        local h3 = mining_table.add{type = "label", caption = {"gui.drill-count"}, style = "bold_label"}
+        h3.style.minimal_width = 50
+        local h4 = mining_table.add{type = "label", caption = {"gui.mining-speed"}, style = "bold_label"}
+        h4.style.minimal_width = 70
+
+        -- Сортируем по количеству буров
+        local sorted_resources = {}
+        for resource, data in pairs(stats.mining_resources) do
+            table.insert(sorted_resources, {resource = resource, data = data})
+        end
+        table.sort(sorted_resources, function(a, b) return a.data.count > b.data.count end)
+
+        -- Отображаем все ресурсы (руд обычно < 20)
+        for _, item in ipairs(sorted_resources) do
+            local resource_name = item.resource
+
+            -- Иконка ресурса
+            local sprite_added = false
+            if resource_name ~= "idle" then
+                -- Пробуем entity/ спрайт (ресурсы - это entity), затем item/
+                local sprite_path = "entity/" .. resource_name
+                local valid = pcall(function()
+                    if helpers.is_valid_sprite_path(sprite_path) then
+                        mining_table.add{
+                            type = "sprite",
+                            sprite = sprite_path,
+                            tooltip = resource_name
+                        }
+                        sprite_added = true
+                    end
+                end)
+                if not sprite_added then
+                    sprite_path = "item/" .. resource_name
+                    pcall(function()
+                        if helpers.is_valid_sprite_path(sprite_path) then
+                            mining_table.add{
+                                type = "sprite",
+                                sprite = sprite_path,
+                                tooltip = resource_name
+                            }
+                            sprite_added = true
+                        end
+                    end)
+                end
+            end
+            if not sprite_added then
+                mining_table.add{type = "label", caption = resource_name == "idle" and "⏸" or "⛏"}
+            end
+
+            -- Имя ресурса (локализованное если доступно)
+            local display_name = resource_name
+            if resource_name ~= "idle" then
+                local proto_success, proto = pcall(function()
+                    return prototypes.entity[resource_name]
+                end)
+                if proto_success and proto and proto.localised_name then
+                    display_name = proto.localised_name
+                end
+            else
+                display_name = {"gui.mining-idle"}
+            end
+
+            local name_lbl = mining_table.add{type = "label", caption = display_name}
+            name_lbl.style.maximal_width = 150
+            name_lbl.style.single_line = false
+
+            -- Количество буров
+            mining_table.add{type = "label", caption = tostring(item.data.count)}
+
+            -- Скорость добычи
+            mining_table.add{
+                type = "label",
+                caption = string.format("%.1f/s", item.data.total_speed)
+            }
+        end
+    else
+        mining_frame.add{
+            type = "label",
+            caption = {"gui.no-mining-resources"}
         }
     end
 end
@@ -1266,6 +1431,14 @@ function planet_stats.update_planet_stats_content(player, surface_stats)
     chart_column.style.width = 720
     chart_column.style.vertical_spacing = 4
 
+    local mining_column = columns.add{
+        type = "flow",
+        name = "mining_column",
+        direction = "vertical"
+    }
+    mining_column.style.width = 360
+    mining_column.style.vertical_spacing = 4
+
     planet_stats.add_production_section(left_column, surface_stats)
     planet_stats.add_power_section(right_column, surface_stats)
     planet_stats.add_power_history_section(right_column, surface_stats.surface_name)
@@ -1275,6 +1448,9 @@ function planet_stats.update_planet_stats_content(player, surface_stats)
     -- Графики энергии в третьей колонке
     planet_stats.add_energy_chart(chart_column, surface_stats.surface_name, "production", {"gui.energy-production-chart"})
     planet_stats.add_energy_chart(chart_column, surface_stats.surface_name, "consumption", {"gui.energy-consumption-chart"})
+
+    -- Добыча ресурсов в четвёртой колонке
+    planet_stats.add_mining_resources_section(mining_column, surface_stats)
     return true
 end
 
