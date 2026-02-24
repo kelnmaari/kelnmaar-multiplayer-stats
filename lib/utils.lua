@@ -304,10 +304,12 @@ function utils.restore_all_timeseries_chunks()
     if storage.planet_energy_timeseries then
         for surface_name, series_pair in pairs(storage.planet_energy_timeseries) do
             for _, ts in pairs(series_pair) do
-                for _, interval in ipairs(ts) do
-                    interval.chunk = nil
-                    interval.line_ids = {}
-                    interval.last_rendered_tick = nil
+                if type(ts) == "table" then
+                    for _, interval in ipairs(ts) do
+                        interval.chunk = nil
+                        interval.line_ids = {}
+                        interval.last_rendered_tick = nil
+                    end
                 end
             end
         end
