@@ -945,8 +945,14 @@ function planet_stats.add_power_history_section(parent, surface_name)
             viewport_width = 800,
             viewport_height = 400
         })
+    else
+        -- Chunk may have been reused from freelist with different tile coverage
+        charts.ensure_tile_coverage(storage.charts_surface, interval.chunk, {
+            viewport_width = 800,
+            viewport_height = 400
+        })
     end
-    
+
     -- Build chart data (convert to Watts/MW correctly)
     -- The data is already in Watts (from stats.update_planet_power_history)
     
@@ -1022,6 +1028,12 @@ function planet_stats.add_energy_chart(parent, surface_name, series_key, title)
     -- Ensure chunk is allocated for this series
     if not interval.chunk then
         interval.chunk = charts.allocate_chunk(storage.charts_surface, {
+            viewport_width = 800,
+            viewport_height = 400
+        })
+    else
+        -- Chunk may have been reused from freelist with different tile coverage
+        charts.ensure_tile_coverage(storage.charts_surface, interval.chunk, {
             viewport_width = 800,
             viewport_height = 400
         })
