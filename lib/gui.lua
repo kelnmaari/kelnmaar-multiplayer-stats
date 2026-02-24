@@ -73,7 +73,15 @@ function gui.render_professional_chart(parent, timeseries, series_to_show, title
         {
             selected_series = selected,
             y_range = nil,  -- Auto-scale Y axis
-            label_format = "time",
+            label_format = function(value)
+                if value >= 1000000 then
+                    return string.format("%.1fM", value / 1000000)
+                elseif value >= 1000 then
+                    return string.format("%.1fk", value / 1000)
+                else
+                    return string.format("%.0f", value)
+                end
+            end,
             viewport_width = viewport_width,
             viewport_height = viewport_height,
         }
@@ -237,7 +245,15 @@ function gui.render_single_series_chart(parent, timeseries, series_name, title, 
             counts = interval.counts,
             sum = interval.sum,
             y_range = nil,  -- Auto-scale per series
-            label_format = "time",
+            label_format = function(value)
+                if value >= 1000000 then
+                    return string.format("%.1fM", value / 1000000)
+                elseif value >= 1000 then
+                    return string.format("%.1fk", value / 1000)
+                else
+                    return string.format("%.0f", value)
+                end
+            end,
             selected_series = selected,
             ttl = ttl,
             viewport_width = viewport_width,

@@ -1,4 +1,17 @@
 ---------------------------------------------------------------------------------------------------
+Version: 6.3.0
+Date: 17. 02. 2026
+  Features:
+    - Improved chart Y-axis labels using custom formatting functions (requires factorio-charts >= 1.0.8)
+    - Energy charts now display values in MW instead of percentages
+    - Power History chart now shows adaptive units (MW/kW/W) instead of time format
+    - Player statistics charts now use compact number format (1.2k, 3.5M) instead of time format
+  Bugfixes:
+    - Fixed energy chart tooltips showing incorrect values due to double unit conversion
+  Dependencies:
+    - Updated required dependency: factorio-charts >= 1.0.8
+
+---------------------------------------------------------------------------------------------------
 Version: 6.2.0
 Date: 04. 02. 2026
   Technical:

@@ -29,8 +29,9 @@ local queue_index = 1
 -- Changing these values between mod versions causes multiplayer desyncs
 -- These must remain constant for the entire lifetime of the mod
 local UPDATE_FREQUENCY = 1800       -- Main stats update - FIXED VALUE
-local CLEANUP_FREQUENCY = 36000     -- Cleanup every 10 minutes - FIXED VALUE  
+local CLEANUP_FREQUENCY = 36000     -- Cleanup every 10 minutes - FIXED VALUE
 local GUI_REFRESH_FREQUENCY = 600   -- GUI refresh every 10 seconds - FIXED VALUE
+local ENERGY_CHART_FREQUENCY = 300  -- Energy chart update every 5 seconds - FIXED VALUE
 
 -- Get update frequency for event registration - always returns same value
 local function get_update_frequency()
@@ -211,6 +212,53 @@ local function register_periodic_handlers()
             end)
             if not success then
                 game.print("[Multiplayer Stats] Error in planet stats processing: " .. tostring(error_msg))
+            end
+        end)
+
+        -- Energy chart data collection every 5 seconds
+        script.on_nth_tick(ENERGY_CHART_FREQUENCY, function(event)
+            local success, error_msg = pcall(function()
+                local processed_surfaces = {}
+                for _, player in pairs(game.players) do
+                    if player.connected and player.surface and not processed_surfaces[player.surface.name] then
+                        local s_name = player.surface.name
+                        processed_surfaces[s_name] = true
+
+                        local quick_stats = {surface_name = s_name}
+                        planet_stats.collect_network_power_stats(player.surface, player.force, quick_stats)
+
+                        local production = 0
+                        local consumption = 0
+                        local has_data = false
+
+                        if quick_stats.network_power and quick_stats.network_power.available then
+                            production = quick_stats.network_power.production
+                            consumption = quick_stats.network_power.consumption
+                            has_data = true
+                        else
+                            -- Fallback: use last known calculated stats from async collection
+                            local state = storage.planet_stats_processing and storage.planet_stats_processing[player.index]
+                            if state and state.stats then
+                                local s = state.stats
+                                production = s.power_generation or 0
+                                consumption = s.power_consumption or 0
+                                has_data = (production > 0 or consumption > 0)
+                            end
+                        end
+
+                        if has_data then
+                            stats_module.update_planet_energy_history(
+                                s_name,
+                                production,
+                                consumption,
+                                utils
+                            )
+                        end
+                    end
+                end
+            end)
+            if not success then
+                game.print("[Multiplayer Stats] Error in energy chart update: " .. tostring(error_msg))
             end
         end)
     end

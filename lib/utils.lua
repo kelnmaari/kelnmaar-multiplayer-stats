@@ -300,6 +300,18 @@ function utils.restore_all_timeseries_chunks()
             end
         end
     end
+
+    if storage.planet_energy_timeseries then
+        for surface_name, series_pair in pairs(storage.planet_energy_timeseries) do
+            for _, ts in pairs(series_pair) do
+                for _, interval in ipairs(ts) do
+                    interval.chunk = nil
+                    interval.line_ids = {}
+                    interval.last_rendered_tick = nil
+                end
+            end
+        end
+    end
 end
 
 -- Initialize planet power history
@@ -315,6 +327,36 @@ function utils.init_planet_timeseries(surface_name)
             {name = "1h",  ticks = 216000, steps = nil, length = 120}
         }
         storage.planet_timeseries[surface_name] = charts.create_time_series(defs)
+    end
+end
+
+-- Initialize planet energy time series (5s step, 1 hour capacity = 720 points)
+-- Two separate time series: one for production, one for consumption
+-- Data is stored in MW (divided by 1,000,000 on write)
+function utils.init_planet_energy_timeseries(surface_name)
+    if not storage.planet_energy_timeseries then
+        storage.planet_energy_timeseries = {}
+    end
+
+    -- Reset stale data from older versions that stored values in Watts
+    local existing = storage.planet_energy_timeseries[surface_name]
+    if existing and not existing._version_mw then
+        storage.planet_energy_timeseries[surface_name] = nil
+    end
+
+    if not storage.planet_energy_timeseries[surface_name] then
+        -- Single interval: 5 seconds (300 ticks), 720 points = 1 hour
+        local production_defs = {
+            {name = "5s", ticks = 300, steps = nil, length = 720}
+        }
+        local consumption_defs = {
+            {name = "5s", ticks = 300, steps = nil, length = 720}
+        }
+        storage.planet_energy_timeseries[surface_name] = {
+            production = charts.create_time_series(production_defs),
+            consumption = charts.create_time_series(consumption_defs),
+            _version_mw = true
+        }
     end
 end
 

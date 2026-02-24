@@ -214,6 +214,19 @@ function stats.update_planet_power_history(surface_name, generation, consumption
     })
 end
 
+-- Update planet energy history for separate production/consumption charts (5s interval)
+-- Values are stored in MW for readable chart labels (percent format shows raw numbers)
+function stats.update_planet_energy_history(surface_name, generation, consumption, utils)
+    utils.init_planet_energy_timeseries(surface_name)
+    local energy_ts = storage.planet_energy_timeseries[surface_name]
+    charts.add_datapoint(energy_ts.production, {
+        production = generation / 1000000
+    })
+    charts.add_datapoint(energy_ts.consumption, {
+        consumption = consumption / 1000000
+    })
+end
+
 -- Handle crafting completion
 function stats.on_player_crafted_item(event)
     local player_index = event.player_index

@@ -4,6 +4,7 @@
 local planet_stats = {}
 local charts = require("__factorio-charts__.charts")
 local gui = require("lib.gui")
+local utils = require("lib.utils")
 
 -- Константы
 local BATCH_SIZE = 200  -- Объектов за один тик
@@ -641,7 +642,7 @@ function planet_stats.create_planet_stats_gui(player, surface_stats)
             surface_stats.total_entities or 0
         }
     }
-    frame.style.width = 750  -- Значительно увеличиваем ширину
+    frame.style.width = 1480  -- Три колонки (широкая третья для графиков)
     frame.style.height = 700
     
     -- Восстанавливаем сохраненную позицию из storage или ставим по центру
@@ -653,7 +654,7 @@ function planet_stats.create_planet_stats_gui(player, surface_stats)
         local scale = player.display_scale
         local res = player.display_resolution
         frame.location = {
-            (res.width / scale - 750) / 2,
+            (res.width / scale - 1480) / 2,
             (res.height / scale - 700) / 2
         }
     end
@@ -721,18 +722,31 @@ function planet_stats.create_planet_stats_gui(player, surface_stats)
     }
     right_column.style.width = 360
     right_column.style.vertical_spacing = 4
-    
+
+    -- Третья колонка - графики энергии
+    local chart_column = columns.add{
+        type = "flow",
+        name = "chart_column",
+        direction = "vertical"
+    }
+    chart_column.style.width = 720
+    chart_column.style.vertical_spacing = 4
+
     -- Добавляем секции в колонки
     planet_stats.add_production_section(left_column, surface_stats)
-    
+
     planet_stats.add_power_section(right_column, surface_stats)
-    
+
     -- Add power history chart if data is available
     planet_stats.add_power_history_section(right_column, surface_stats.surface_name)
-    
+
     planet_stats.add_debug_power_section(right_column, surface_stats)
     planet_stats.add_shortages_section(right_column, surface_stats, player)
-    
+
+    -- Графики энергии в третьей колонке
+    planet_stats.add_energy_chart(chart_column, surface_stats.surface_name, "production", {"gui.energy-production-chart"})
+    planet_stats.add_energy_chart(chart_column, surface_stats.surface_name, "consumption", {"gui.energy-consumption-chart"})
+
     return frame
 end
 
@@ -939,7 +953,15 @@ function planet_stats.add_power_history_section(parent, surface_name)
     -- Render the data
     charts.render_time_series(storage.charts_surface.surface, ts, interval_index, {
         selected_series = {production = true, consumption = true},
-        label_format = "time",
+        label_format = function(value)
+            if value >= 1000000 then
+                return string.format("%.1f MW", value / 1000000)
+            elseif value >= 1000 then
+                return string.format("%.1f kW", value / 1000)
+            else
+                return string.format("%.0f W", value)
+            end
+        end,
         viewport_width = 800,
         viewport_height = 400
     })
@@ -962,6 +984,81 @@ function planet_stats.add_power_history_section(parent, surface_name)
     }
     camera.style.width = 340
     camera.style.height = 160
+    camera.style.horizontally_stretchable = true
+end
+
+-- Добавить график энергии (отдельный для production или consumption)
+-- series_key: "production" or "consumption"
+-- title: display title for the chart
+function planet_stats.add_energy_chart(parent, surface_name, series_key, title)
+    -- Ensure time series is initialized even if no data has been collected yet
+    utils.init_planet_energy_timeseries(surface_name)
+
+    local ts = storage.planet_energy_timeseries[surface_name][series_key]
+    if not ts then return end
+
+    local chart_frame = parent.add{
+        type = "frame",
+        direction = "vertical",
+        style = "kelnmaar_info_frame"
+    }
+    chart_frame.style.horizontally_stretchable = true
+
+    chart_frame.add{
+        type = "label",
+        caption = title,
+        style = "kelnmaar_chart_title"
+    }
+
+    -- Use index 1 (5s intervals, single resolution)
+    local interval_index = 1
+    local interval = ts[interval_index]
+
+    -- Ensure chart surface exists
+    if not storage.charts_surface then
+        storage.charts_surface = charts.create_surface("kelnmaar-stats-charts")
+    end
+
+    -- Ensure chunk is allocated for this series
+    if not interval.chunk then
+        interval.chunk = charts.allocate_chunk(storage.charts_surface, {
+            viewport_width = 800,
+            viewport_height = 400
+        })
+    end
+
+    -- Force re-render (clear cached tick to avoid skip when GUI rebuilds on same tick)
+    interval.last_rendered_tick = nil
+
+    -- Render the chart
+    local selected = {}
+    selected[series_key] = true
+    charts.render_time_series(storage.charts_surface.surface, ts, interval_index, {
+        selected_series = selected,
+        label_format = function(value)
+            return string.format("%.1f MW", value)
+        end,
+        viewport_width = 800,
+        viewport_height = 400
+    })
+
+    -- Add camera widget
+    local camera_params = charts.get_camera_params(interval.chunk, {
+        viewport_width = 800,
+        viewport_height = 400,
+        widget_width = 680,
+        widget_height = 360,
+        fit_mode = "fit"
+    })
+
+    local camera = chart_frame.add{
+        type = "camera",
+        position = camera_params.position,
+        surface_index = storage.charts_surface.surface.index,
+        zoom = camera_params.zoom
+    }
+    camera.style.width = 680
+    camera.style.height = 360
     camera.style.horizontally_stretchable = true
 end
 
@@ -1149,10 +1246,23 @@ function planet_stats.update_planet_stats_content(player, surface_stats)
     right_column.style.width = 360
     right_column.style.vertical_spacing = 4
 
+    local chart_column = columns.add{
+        type = "flow",
+        name = "chart_column",
+        direction = "vertical"
+    }
+    chart_column.style.width = 720
+    chart_column.style.vertical_spacing = 4
+
     planet_stats.add_production_section(left_column, surface_stats)
     planet_stats.add_power_section(right_column, surface_stats)
+    planet_stats.add_power_history_section(right_column, surface_stats.surface_name)
     planet_stats.add_debug_power_section(right_column, surface_stats)
     planet_stats.add_shortages_section(right_column, surface_stats, player)
+
+    -- Графики энергии в третьей колонке
+    planet_stats.add_energy_chart(chart_column, surface_stats.surface_name, "production", {"gui.energy-production-chart"})
+    planet_stats.add_energy_chart(chart_column, surface_stats.surface_name, "consumption", {"gui.energy-consumption-chart"})
     return true
 end
 
