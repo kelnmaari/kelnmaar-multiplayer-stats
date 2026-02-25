@@ -1,4 +1,15 @@
 ---------------------------------------------------------------------------------------------------
+Version: 6.5.0
+Date: 25. 02. 2026
+  Features:
+    - Added shortcut toolbar buttons (bottom-right, next to toolbelt) for all three statistics windows
+    - Statistics, Rankings, and Planet Stats can now be toggled via toolbar buttons in addition to hotkeys
+    - Custom icons for each shortcut button (bar chart, trophy, globe)
+    - Shortcuts are linked to existing hotkeys (Shift+Alt+S/R/P) and appear in the shortcut selection menu
+  Translation:
+    - Added shortcut button names for all 8 languages
+
+---------------------------------------------------------------------------------------------------
 Version: 6.4.2
 Date: 25. 02. 2026
   Features:

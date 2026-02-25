@@ -499,6 +499,74 @@ if PLANET_STATS_ENABLED then
     end)
 end
 
+-- Shortcut toolbar buttons (bottom-right shortcut bar)
+script.on_event(defines.events.on_lua_shortcut, function(event)
+    if event.prototype_name == "toggle-multiplayer-stats" then
+        local player = game.players[event.player_index]
+        utils.init_player(event.player_index)
+
+        local gui_exists = player.gui.screen.multiplayer_stats_frame ~= nil
+        if gui_exists then
+            if storage.gui_state and storage.gui_state[event.player_index] then
+                storage.gui_state[event.player_index].gui_position = player.gui.screen.multiplayer_stats_frame.location
+                storage.gui_state[event.player_index].gui_open = false
+            end
+            player.gui.screen.multiplayer_stats_frame.destroy()
+        else
+            gui_main.create_stats_gui(player, utils, rankings)
+        end
+
+    elseif event.prototype_name == "toggle-player-rankings" then
+        local player = game.players[event.player_index]
+        if player.gui.screen.rankings_frame then
+            player.gui.screen.rankings_frame.destroy()
+        else
+            gui.show_rankings(player, rankings)
+        end
+
+    elseif event.prototype_name == "toggle-planet-stats" then
+        if not PLANET_STATS_ENABLED then return end
+        local player = game.players[event.player_index]
+
+        if not storage.planet_stats_state then
+            storage.planet_stats_state = {}
+        end
+        if not storage.planet_stats_state[event.player_index] then
+            storage.planet_stats_state[event.player_index] = { auto_show = false }
+        end
+
+        local planet_gui_exists = player.gui.screen.planet_stats_frame ~= nil
+        if planet_gui_exists then
+            player.gui.screen.planet_stats_frame.destroy()
+            planet_stats.stop_async_collection(event.player_index)
+            storage.planet_stats_state[event.player_index].auto_show = false
+        else
+            local state = planet_stats.start_async_collection(player)
+            if state then
+                planet_stats.create_planet_stats_gui(player, state.stats)
+                storage.planet_stats_state[event.player_index].auto_show = true
+            else
+                local surface_stats = planet_stats.collect_surface_stats(player.surface)
+                planet_stats.create_planet_stats_gui(player, surface_stats or {
+                    surface_name = player.surface.name,
+                    production = {},
+                    power_generation = 0,
+                    power_consumption = 0,
+                    entity_shortages = {},
+                    total_entities = 0,
+                    working_entities = 0,
+                    processed_entities = 0,
+                    power_producers = 0,
+                    power_consumers = 0,
+                    debug_power_info = {},
+                    network_power = nil
+                })
+                storage.planet_stats_state[event.player_index].auto_show = true
+            end
+        end
+    end
+end)
+
 -- GUI click handlers (using stdlib2 Gui.on_click for pattern-matched event routing)
 
 Gui.on_click("^close_stats_gui$", function(event)

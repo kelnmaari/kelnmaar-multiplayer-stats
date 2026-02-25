@@ -21,10 +21,11 @@ KelnMaar's Multiplayer Statistics is a comprehensive statistics tracking mod des
   - Deep space exploration achievement for endgame content
   - Interplanetary travel monitoring and achievements
 
-• **High-Fidelity Planet Stats (v6.0.0)**:
+• **High-Fidelity Planet Stats (v6.0.0+)**:
   - **Power Grid Precision**: 100% accuracy for both vanilla and modded (Bob's/Angel's) power sources.
   - **Theoretical Capacity**: [CALC] mode shows full potential generation and maximum load for infrastructure planning.
   - **Burner & Solar Support**: Accurate tracking of non-electric generators and solar panels (regardless of time of day).
+  - **Mining Resources Overview**: Per-ore breakdown of active and idle mining drills with effective mining speed. Supports all vanilla and modded ores (Bob's Mods, Angel's, etc.) via `entity.mining_target`. Idle drills highlighted in red to show untapped mining potential.
   - **Adaptive UI**: New integrated vertical scrolling prevents window overflow on any screen resolution.
 
 • **Advanced Data Visualization**: 
@@ -57,7 +58,7 @@ KelnMaar's Multiplayer Statistics is a comprehensive statistics tracking mod des
   - 🇧🇷 Portuguese (Brazilian)
   - 🇻🇳 Vietnamese
 
-## Hotkeys & Commands
+## Hotkeys, Toolbar & Commands
 
 ### Keyboard Shortcuts
 | Hotkey | Action |
@@ -65,6 +66,15 @@ KelnMaar's Multiplayer Statistics is a comprehensive statistics tracking mod des
 | `Shift + Alt + S` | Toggle main statistics window |
 | `Shift + Alt + R` | Toggle player rankings window |
 | `Shift + Alt + P` | Toggle planet statistics window (requires "Enable Planet Statistics" setting) |
+
+### Shortcut Toolbar Buttons
+All three windows are also available as buttons in the bottom-right shortcut bar (next to the toolbelt). The buttons are linked to the hotkeys above and can be toggled on/off via right-click on the shortcut bar.
+
+| Button | Action |
+|--------|--------|
+| 📊 Statistics | Toggle main statistics window |
+| 🏆 Rankings | Toggle player rankings window |
+| 🌍 Planet Stats | Toggle planet statistics window |
 
 ### Chat Commands
 | Command | Description |
