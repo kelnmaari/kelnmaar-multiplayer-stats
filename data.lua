@@ -248,16 +248,10 @@ data:extend({
         order = "a[kelnmaar]-a[stats]",
         action = "lua",
         associated_control_input = "toggle-multiplayer-stats",
-        icon = {
-            filename = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/stats-x32.png",
-            size = 32,
-            flags = { "gui-icon" }
-        },
-        small_icon = {
-            filename = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/stats-x24.png",
-            size = 24,
-            flags = { "gui-icon" }
-        }
+        icon = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/stats-x32.png",
+        icon_size = 32,
+        small_icon = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/stats-x24.png",
+        small_icon_size = 24
     },
     {
         type = "shortcut",
@@ -265,16 +259,10 @@ data:extend({
         order = "a[kelnmaar]-b[rankings]",
         action = "lua",
         associated_control_input = "toggle-player-rankings",
-        icon = {
-            filename = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/rankings-x32.png",
-            size = 32,
-            flags = { "gui-icon" }
-        },
-        small_icon = {
-            filename = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/rankings-x24.png",
-            size = 24,
-            flags = { "gui-icon" }
-        }
+        icon = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/rankings-x32.png",
+        icon_size = 32,
+        small_icon = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/rankings-x24.png",
+        small_icon_size = 24
     },
     {
         type = "shortcut",
@@ -282,15 +270,9 @@ data:extend({
         order = "a[kelnmaar]-c[planet]",
         action = "lua",
         associated_control_input = "toggle-planet-stats",
-        icon = {
-            filename = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/planet-x32.png",
-            size = 32,
-            flags = { "gui-icon" }
-        },
-        small_icon = {
-            filename = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/planet-x24.png",
-            size = 24,
-            flags = { "gui-icon" }
-        }
+        icon = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/planet-x32.png",
+        icon_size = 32,
+        small_icon = "__kelnmaar-multiplayer-stats__/graphics/icons/shortcut-toolbar/planet-x24.png",
+        small_icon_size = 24
     }
 })

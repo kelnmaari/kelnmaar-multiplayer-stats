@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 6.5.1
+Date: 25. 02. 2026
+  Bugfixes:
+    - Fixed shortcut prototype icon format: use string path with icon_size instead of sprite table (Factorio 2.0 requirement)
+
+---------------------------------------------------------------------------------------------------
 Version: 6.5.0
 Date: 25. 02. 2026
   Features:
